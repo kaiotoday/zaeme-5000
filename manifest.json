@@ -1,0 +1,16 @@
+  "name": "Zäme 5000",
+  "short_name": "Zäme",
+  "description": "Treffe, Beerpong & Vino für die beste Gruppe.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ffedd5",
+  "theme_color": "#111827",
+  "icons": [
+    {
+      "src": "./assets/app-icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

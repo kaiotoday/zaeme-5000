@@ -1,0 +1,369 @@
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400..700&family=Permanent+Marker&family=Schoolbell&display=swap');
+
+:root {
+  --craft-shadow: 4px 6px 0px rgba(0, 0, 0, 0.7);
+  --inset-shadow: inset 2px 4px 6px rgba(0,0,0,0.5);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Schoolbell', cursive;
+  background-image: url('./assets/cardboard.png');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  color: #1a1a1a;
+  overscroll-behavior: none; /* Prevent bounce so it feels like an app */
+  margin: 0;
+  padding: 0;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.font-marker { font-family: 'Permanent Marker', cursive; }
+.font-hand { font-family: 'Caveat', cursive; }
+
+/* Views & Routing */
+#app-container {
+  flex: 1;
+  overflow-y: auto;
+  position: relative;
+  padding-bottom: 5rem; /* leave space for navbar */
+}
+.view-panel {
+  display: none;
+  flex-direction: column;
+  padding: 1rem;
+  min-height: 100%;
+}
+.view-panel.active {
+  display: flex;
+}
+
+/* --- Crafting Materials & Utils --- */
+
+.craft-shadow {
+  box-shadow: var(--craft-shadow);
+}
+
+.material-tape {
+  background-color: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(2px);
+  border-radius: 2px;
+  box-shadow: 1px 2px 3px rgba(0,0,0,0.3);
+  position: absolute;
+  z-index: 10;
+}
+
+.material-paper {
+  background-color: #fdfaf0;
+  box-shadow: 2px 4px 8px rgba(0,0,0,0.6);
+  /* Rough paper cut via clip-path */
+  clip-path: polygon(1% 2%, 99% -1%, 98% 99%, 1% 98%, 0% 50%);
+}
+
+.polaroid {
+  background-color: #fff;
+  padding: 0.5rem 0.5rem 2rem 0.5rem;
+  box-shadow: 3px 6px 12px rgba(0,0,0,0.6);
+  transform: rotate(-2deg);
+}
+
+/* --- Components --- */
+
+/* Navbar felt */
+.nav-felt {
+  background-image: url('./assets/felt.png');
+  background-size: cover;
+  box-shadow: 0px -4px 15px rgba(0,0,0,0.9);
+  border-top: 4px dashed rgba(20,20,20,0.6);
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  height: 5rem;
+  z-index: 50;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+}
+.nav-item {
+  color: #fff;
+  font-size: 1.5rem;
+  text-shadow: 2px 2px 0px #000;
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.nav-item span {
+  font-size: 0.8rem;
+  font-family: 'Permanent Marker', cursive;
+}
+.nav-item.active {
+  transform: translateY(-8px) scale(1.15);
+  filter: drop-shadow(0 -4px 6px rgba(0,0,0,0.6));
+  color: #ffe866;
+}
+
+/* Buzzer / Schmöker Button */
+.buzzer-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 60dvh;
+}
+.buzzer-base {
+  background: #2a2a2a;
+  border-radius: 50%;
+  padding: 10px;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.8), inset 0px -4px 8px rgba(0,0,0,0.7);
+  border: 4px solid #1a1a1a;
+}
+.buzzer-btn {
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle at 30% 30%, #ff4b4b, #ba0000);
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  box-shadow: 
+    inset -5px -10px 20px rgba(0,0,0,0.6),
+    inset 5px 10px 20px rgba(255,255,255,0.4),
+    0px 15px 0px #630000,
+    0px 20px 25px rgba(0,0,0,0.9);
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+}
+.buzzer-btn:active {
+  transform: translateY(15px);
+  box-shadow: 
+    inset -5px -10px 20px rgba(0,0,0,0.6),
+    inset 5px 10px 20px rgba(255,255,255,0.4),
+    0px 0px 0px #630000,
+    0px 5px 10px rgba(0,0,0,0.9);
+}
+
+/* Leaderboard Board */
+.bg-corkboard {
+  background-image: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url('./assets/corkboard.png');
+  background-size: cover;
+  border: 10px solid #4a3320;
+  border-radius: 4px;
+  box-shadow: inset 0px 0px 20px rgba(0,0,0,0.9), var(--craft-shadow);
+  padding: 2rem 1rem;
+}
+.pinned-note {
+  background: #fcf4a3; /* pale yellow */
+  box-shadow: 3px 5px 8px rgba(0,0,0,0.6);
+  position: relative;
+  transform: rotate(-1deg);
+  padding: 0.5rem;
+  margin-bottom: 1rem;
+  display: grid;
+  grid-template-columns: 2rem 1fr auto;
+  align-items: center;
+  gap: 1rem;
+}
+.pinned-note:nth-child(even) { transform: rotate(1deg); background: #e6f9ff; }
+.pinned-note::before {
+  content: "📍";
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1.2rem;
+  filter: drop-shadow(1px 2px 2px rgba(0,0,0,0.5));
+}
+.pinned-score {
+  color: #ff9900;
+  text-shadow: 1px 1px 0px #000;
+  font-family: 'Permanent Marker', cursive;
+  font-size: 1.2rem;
+}
+
+/* Profile Elements */
+.avatar-cutout {
+  width: 150px;
+  height: 150px;
+  background-image: url('./assets/avatar.png');
+  background-size: cover;
+  background-position: center;
+  filter: drop-shadow(4px 10px 10px rgba(0,0,0,0.8));
+  margin: 0 auto;
+}
+
+/* --- Theme Support --- */
+body.theme-notebook {
+  background-image: url('./assets/notebook.png');
+}
+
+body.theme-grunge {
+  background-image: url('./assets/grunge.png');
+  color: #fff;
+}
+body.theme-grunge .material-paper,
+body.theme-grunge .polaroid,
+body.theme-grunge .pinned-note {
+  color: #1a1a1a;
+}
+body.theme-grunge .font-marker.text-black {
+  color: #fff;
+}
+body.theme-grunge .polaroid p {
+  color: #1a1a1a;
+}
+
+/* --- Theme Selector UI --- */
+.theme-selector-container {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 1rem;
+}
+.theme-btn {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 3px solid rgba(255,255,255,0.8);
+  box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+  cursor: pointer;
+  transition: transform 0.2s, border-color 0.2s;
+}
+.theme-btn:active {
+  transform: scale(0.9);
+}
+.theme-btn.active {
+  border-color: #ffe866;
+  transform: scale(1.15);
+  box-shadow: 0 0 10px rgba(255,232,102,0.8);
+}
+.theme-btn-cardboard { background-image: url('./assets/cardboard.png'); background-size: cover; }
+.theme-btn-notebook { background-image: url('./assets/notebook.png'); background-size: cover; }
+.theme-btn-grunge { background-image: url('./assets/grunge.png'); background-size: cover; }
+.theme-btn-piggy { background-image: url('./assets/piggy.png'); background-size: cover; border-color: #ffb3c6; }
+
+/* --- Deep Theming / Piggy --- */
+body.theme-piggy {
+  background-image: url('./assets/piggy.png');
+  font-family: 'Schoolbell', cursive;
+}
+body.theme-piggy .font-marker {
+  font-family: 'Schoolbell', cursive;
+  color: #ff1493;
+  text-shadow: 2px 2px 0px #fff;
+}
+body.theme-piggy .material-paper,
+body.theme-piggy .polaroid,
+body.theme-piggy .pinned-note {
+  background-color: #ffe6f0;
+  color: #d81159;
+  border: 4px dashed #ff85a2;
+}
+body.theme-piggy .ping-chip {
+  background: rgba(255, 192, 203, 0.85);
+  border: 2px solid #ff69b4;
+  color: #d81159;
+  border-radius: 20px;
+  font-family: 'Schoolbell', cursive;
+}
+body.theme-piggy .ping-chip.active {
+  background: #ff1493;
+  color: white;
+  border-color: #fff;
+  box-shadow: 0 4px 10px rgba(255, 20, 147, 0.5);
+}
+body.theme-piggy .buzzer-base {
+  background: #ffb6c1;
+  border-color: #ff69b4;
+}
+body.theme-piggy .buzzer-btn {
+  background: radial-gradient(circle at 30% 30%, #ff69b4, #ff1493);
+  box-shadow: inset -5px -10px 20px rgba(0,0,0,0.2), inset 5px 10px 20px rgba(255,255,255,0.6), 0px 15px 0px #c71585, 0px 20px 25px rgba(255,20,147,0.5);
+}
+body.theme-piggy .buzzer-btn:active {
+  box-shadow: inset -5px -10px 20px rgba(0,0,0,0.2), inset 5px 10px 20px rgba(255,255,255,0.6), 0px 0px 0px #c71585, 0px 5px 10px rgba(255,20,147,0.5);
+}
+body.theme-piggy .nav-felt {
+  background-image: none;
+  background-color: #ffb3c6;
+  border-top: 4px solid #ff69b4;
+}
+body.theme-piggy .nav-item {
+  color: #ff1493;
+  text-shadow: 1px 1px 0px #fff;
+}
+body.theme-piggy .nav-item.active {
+  color: #fff;
+  text-shadow: 1px 1px 0px #ff1493;
+}
+
+/* --- Ping Panel UI --- */
+.ping-section-title {
+  font-family: 'Permanent Marker', cursive;
+  color: white;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+  margin-bottom: 0.5rem;
+  font-size: 1.5rem;
+}
+.ping-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  justify-content: center;
+}
+.ping-chip {
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px dashed rgba(255, 255, 255, 0.5);
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-family: 'Caveat', cursive;
+  font-size: 1.2rem;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+  backdrop-filter: blur(2px);
+}
+.ping-chip.active {
+  background: #ffe866;
+  border-style: solid;
+  border-color: #ff9900;
+  color: #1a1a1a;
+  text-shadow: none;
+  transform: scale(1.05) rotate(-2deg);
+  box-shadow: 2px 4px 6px rgba(0,0,0,0.5);
+}
+
+/* --- iOS Style Alert UI --- */
+.ios-alert {
+  position: fixed;
+  top: -100%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 92%;
+  max-width: 400px;
+  z-index: 1000;
+  transition: top 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 20px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+  display: flex;
+  flex-direction: column;
+}
+.ios-alert.show {
+  top: 1rem;
+}
