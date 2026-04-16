@@ -1,7 +1,12 @@
 // app.js
 document.addEventListener('DOMContentLoaded', () => {
 
-  // --- Profile Data ---
+  // --- Supabase Init ---
+  const SUPABASE_URL = 'https://oaybbyhlitmeftjtxwcn.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9heWJieWhsaXRtZWZ0anR4d2NuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYzMzc3OTMsImV4cCI6MjA5MTkxMzc5M30.CxMa2fLNWMfc8_RlEKDWy1Be4lYzByqJe3_DGeOfH0s';
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+
   const profileNameInput = document.getElementById('profile-name');
   const profileAvatar = document.getElementById('profile-avatar');
   const avatarUpload = document.getElementById('avatar-upload');
@@ -167,47 +172,57 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // --- Eis Teere! / Ping Button ---
+  // --- Eis Teere! / Ping Button (LIVE via Supabase) ---
   const smokerBtn = document.getElementById('smoker-btn');
   if (smokerBtn) {
-    smokerBtn.addEventListener('click', () => {
+    smokerBtn.addEventListener('click', async () => {
       smokerBtn.style.transform = 'translateY(15px)';
       
-      // Get selected values
       const loc = document.querySelector('#ping-location .ping-chip.active')?.getAttribute('data-val') || 'Irgendwo';
-      let locText = loc;
-      if(loc === 'Aarau Roulette') {
-        const spots = ['Hinterm Bahnhof', 'Gönhardwald', 'Aareufer', 'Bahnhofsunterführung'];
-        locText = spots[Math.floor(Math.random() * spots.length)] + ' 🎲';
-      }
-
       const action = document.querySelector('#ping-action .ping-chip.active')?.getAttribute('data-val') || 'teeere';
       const timeVal = document.querySelector('#ping-time .ping-chip.active')?.getAttribute('data-val') || '5';
-      
       const lang = localStorage.getItem('profile-lang') || 'de';
+      const userName = localStorage.getItem('profile-name') || 'Anon';
 
-      // Language Map for Duration
       const timeMap = {
-        '5': { es: 'cinco minutos', pt: 'cinco minutos', it: 'cinque minuti', no: 'fem minutter', de: 'foif minute' },
-        '15': { es: 'quince minutos', pt: 'quinze minutos', it: 'quindici minuti', no: 'femten minutter', de: 'vierzgi minute' },
-        '30': { es: 'treinta minutos', pt: 'trinta minutos', it: 'trenta minuti', no: 'tretti minutter', de: 'halbstund' },
-        '60': { es: 'una hora', pt: 'uma hora', it: 'un\'ora', no: 'en time', de: 'e stund' },
-        '120': { es: 'dos horas+', pt: 'duas horas+', it: 'due ore+', no: 'to timer+', de: 'zwei stund+' }
+        '5':  { es:'cinco minutos', pt:'cinco minutos', it:'cinque minuti', no:'fem minutter', de:'foif minute' },
+        '15': { es:'quince minutos', pt:'quinze minutos', it:'quindici minuti', no:'femten minutter', de:'vierzgi minute' },
+        '30': { es:'treinta minutos', pt:'trinta minutos', it:'trenta minuti', no:'tretti minutter', de:'halbstund' },
+        '60': { es:'una hora', pt:'uma hora', it:"un'ora", no:'en time', de:'e stund' },
+        '120':{ es:'dos horas+', pt:'duas horas+', it:'due ore+', no:'to timer+', de:'zwei stund+' }
       };
+      const translatedTime = timeMap[timeVal]?.[lang] ?? timeVal;
 
-      const translatedTime = timeMap[timeVal] ? timeMap[timeVal][lang] : timeVal;
-      
-      setTimeout(() => {
-        const userName = localStorage.getItem('profile-name') || "Tambi"; 
-        
-        // e.g. "Tambi - Zitas mangée dos horas"
-        const message = `${userName} - ${locText} ${action} ${translatedTime}`;
-        showNotification(message);
+      // INSERT into Supabase — all friends will receive this in real-time
+      const { error } = await supabase.from('pings').insert({
+        user_name: userName,
+        location: loc,
+        action: action,
+        duration: translatedTime
+      });
 
-        smokerBtn.style.transform = '';
-      }, 150);
+      smokerBtn.style.transform = '';
+
+      if (error) {
+        console.error('Ping failed:', error.message);
+        // Fallback: show locally anyway
+        showNotification(`${userName} - ${loc} ${action} ${translatedTime}`);
+      }
+      // Success: real-time subscription below will trigger the notification for everyone
     });
   }
+
+  // --- Real-time subscription: receive pings from friends ---
+  const myName = localStorage.getItem('profile-name') || '';
+  supabase
+    .channel('public:pings')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pings' }, (payload) => {
+      const ping = payload.new;
+      // Show notification to everyone EXCEPT the sender (they already know they sent it)
+      const msg = `${ping.user_name} - ${ping.location} ${ping.action} ${ping.duration}`;
+      showNotification(msg);
+    })
+    .subscribe();
 
   // --- Profile: Play Signature Sound ---
   const playSoundBtn = document.getElementById('play-sound-btn');
@@ -216,6 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
       alert('🎶 Dein Signature-Sound läuft! 🎶\n(Dummy für Web Audio API)');
     });
   }
+
 
   const alertRadar = document.getElementById('alert-radar');
   const radarModal = document.getElementById('radar-modal');
