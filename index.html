@@ -29,8 +29,42 @@
 </head>
 <body>
 
+  <!-- Login Overlay -->
+  <div id="view-login" class="fixed inset-0 z-[200] bg-black text-white flex flex-col items-center justify-center p-6 transition-opacity duration-500">
+    <div class="max-w-md w-full bg-[#1a1a1a] rounded-3xl shadow-2xl p-8 relative overflow-hidden border-2 border-white/10">
+      <h1 class="text-4xl font-marker text-center mb-2 text-white drop-shadow-sm">Zäme 5000</h1>
+      <p class="text-center font-sans text-sm text-gray-400 mb-8 uppercase tracking-widest font-bold">Wer loggt sich ein?</p>
+      
+      <!-- Name Grid -->
+      <div class="grid grid-cols-2 gap-4 mb-2 max-h-[50vh] overflow-y-auto pr-2" id="login-name-grid">
+        <button class="login-name-btn bg-white/5 border-2 border-white/10 rounded-xl py-4 font-marker text-xl text-white shadow-sm hover:border-orange-400 hover:text-orange-500 hover:bg-white/10 transition-all">Tambi</button>
+        <button class="login-name-btn bg-white/5 border-2 border-white/10 rounded-xl py-4 font-marker text-xl text-white shadow-sm hover:border-orange-400 hover:text-orange-500 hover:bg-white/10 transition-all">Lulla</button>
+        <button class="login-name-btn bg-white/5 border-2 border-white/10 rounded-xl py-4 font-marker text-xl text-white shadow-sm hover:border-orange-400 hover:text-orange-500 hover:bg-white/10 transition-all">Märek</button>
+        <button class="login-name-btn bg-white/5 border-2 border-white/10 rounded-xl py-4 font-marker text-xl text-white shadow-sm hover:border-orange-400 hover:text-orange-500 hover:bg-white/10 transition-all">Ben</button>
+        <button class="login-name-btn bg-white/5 border-2 border-white/10 rounded-xl py-4 font-marker text-xl text-white shadow-sm hover:border-orange-400 hover:text-orange-500 hover:bg-white/10 transition-all">Diego</button>
+        <button class="login-name-btn bg-white/5 border-2 border-white/10 rounded-xl py-4 font-marker text-xl text-white shadow-sm hover:border-orange-400 hover:text-orange-500 hover:bg-white/10 transition-all">Carlo</button>
+        <button class="login-name-btn bg-white/5 border-2 border-white/10 rounded-xl py-4 font-marker text-xl text-white shadow-sm hover:border-orange-400 hover:text-orange-500 hover:bg-white/10 transition-all">Moro</button>
+        <button class="login-name-btn bg-white/5 border-2 border-white/10 rounded-xl py-4 font-marker text-xl text-white shadow-sm hover:border-orange-400 hover:text-orange-500 hover:bg-white/10 transition-all">Felix</button>
+      </div>
+    </div>
+
+    <!-- PIN Modal (Inner Overlay) -->
+    <div id="pin-modal" class="absolute inset-0 bg-black/95 flex flex-col items-center justify-center hidden opacity-0 transition-opacity duration-300 z-10 backdrop-blur-sm">
+      <h2 class="text-white font-marker text-3xl mb-4" id="pin-welcome-msg">Hallo Tambi</h2>
+      <p class="text-white/60 font-sans text-sm mb-6 uppercase tracking-wider font-bold">Bitte Gruppen-PIN eingeben:</p>
+      
+      <div class="flex gap-4 mb-4 relative">
+        <input type="tel" id="pin-input" maxlength="4" placeholder="----" class="w-40 h-16 bg-white/10 border-2 border-white/20 rounded-xl text-center text-white text-3xl font-bold tracking-[0.5em] focus:border-orange-500 focus:outline-none transition-colors" />
+      </div>
+      
+      <p id="pin-error" class="text-red-500 font-sans text-sm font-bold opacity-0 transition-opacity mb-8 bg-red-500/20 px-4 py-2 rounded">Falscher PIN!</p>
+      
+      <button id="cancel-login" class="text-white/50 font-sans hover:text-white transition-colors underline pb-20">Zurück zur Auswahl</button>
+    </div>
+  </div>
+
   <!-- Main Scrollable Area -->
-  <main id="app-container">
+  <main id="app-container" class="hidden">
 
     <!-- View: Dashboard -->
     <section id="view-home" class="view-panel active">
@@ -178,11 +212,9 @@
       </div>
       
       <!-- Name Edit -->
-      <div class="flex justify-center mt-6 mb-4">
-        <div class="bg-black/50 py-2 px-4 -rotate-2 relative rounded">
-           <input type="text" id="profile-name" value="Tobi the Punk" class="bg-transparent border-none text-center font-marker text-2xl text-white outline-none w-48 drop-shadow-[0_2px_2px_rgba(0,0,0,1)] placeholder-white/70">
-           <span class="absolute -right-4 -top-4 text-xl drop-shadow hover:scale-110 cursor-pointer">✏️</span>
-        </div>
+      <div class="flex flex-col items-center mt-6 mb-4">
+        <h2 id="profile-name-display" class="font-marker text-3xl text-white drop-shadow-sm mb-1 bg-black/30 px-6 py-2 rounded-lg -rotate-2">Anon</h2>
+        <p class="font-sans text-sm text-white/50 uppercase tracking-widest font-bold mt-1">Eingeloggt</p>
       </div>
 
       <!-- Language Select -->
@@ -214,6 +246,12 @@
           <button class="theme-btn theme-btn-grunge" data-theme="grunge"></button>
           <button class="theme-btn theme-btn-piggy" data-theme="piggy"></button>
         </div>
+      </div>
+
+      <div class="flex justify-center mt-6 pb-6">
+        <button id="logout-btn" class="material-paper torn-edges px-6 py-3 font-marker text-lg text-red-600 hover:scale-105 active:scale-95 transition-transform flex items-center gap-2 mb-10">
+          <span>🔐</span> Ausloggen (App sperren)
+        </button>
       </div>
     </section>
 

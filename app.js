@@ -7,14 +7,95 @@ document.addEventListener('DOMContentLoaded', () => {
   const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 
-  const profileNameInput = document.getElementById('profile-name');
+  // --- Auth & Login Logic ---
+  const viewLogin = document.getElementById('view-login');
+  const appContainer = document.getElementById('app-container');
+  const navFelt = document.querySelector('.nav-felt');
+  const profileNameDisplay = document.getElementById('profile-name-display');
+  const logoutBtn = document.getElementById('logout-btn');
+
+  const checkAuth = () => {
+    const savedName = localStorage.getItem('profile-name');
+    if (savedName) {
+      if (profileNameDisplay) profileNameDisplay.textContent = savedName;
+      if (viewLogin) viewLogin.classList.add('hidden');
+      if (appContainer) appContainer.classList.remove('hidden');
+      if (navFelt) navFelt.classList.remove('hidden');
+    } else {
+      if (viewLogin) viewLogin.classList.remove('hidden');
+      if (appContainer) appContainer.classList.add('hidden');
+      if (navFelt) navFelt.classList.add('hidden');
+    }
+  };
+
+  // Initial Auth Check
+  checkAuth();
+
+  // Login Grid Interactions
+  const loginBtns = document.querySelectorAll('.login-name-btn');
+  const pinModal = document.getElementById('pin-modal');
+  const pinInput = document.getElementById('pin-input');
+  const pinError = document.getElementById('pin-error');
+  const cancelLogin = document.getElementById('cancel-login');
+  const pinWelcomeMsg = document.getElementById('pin-welcome-msg');
+  let selectedLoginName = '';
+
+  loginBtns.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      selectedLoginName = e.target.textContent.trim();
+      pinWelcomeMsg.textContent = `Hallo ${selectedLoginName}`;
+      pinModal.classList.remove('hidden');
+      setTimeout(() => {
+        pinModal.classList.remove('opacity-0');
+        pinInput.focus();
+      }, 50);
+    });
+  });
+
+  if (cancelLogin) {
+    cancelLogin.addEventListener('click', () => {
+      pinModal.classList.add('opacity-0');
+      setTimeout(() => {
+        pinModal.classList.add('hidden');
+        pinInput.value = '';
+        pinError.classList.add('opacity-0');
+        selectedLoginName = '';
+      }, 300);
+    });
+  }
+
+  if (pinInput) {
+    pinInput.addEventListener('input', (e) => {
+      pinError.classList.add('opacity-0');
+      if (e.target.value.length === 4) {
+        if (e.target.value === '5000') {
+          // Success
+          localStorage.setItem('profile-name', selectedLoginName);
+          pinInput.value = '';
+          e.target.blur();
+          checkAuth();
+          
+          pinModal.classList.add('hidden');
+          pinModal.classList.add('opacity-0');
+        } else {
+          // Error
+          pinError.classList.remove('opacity-0');
+          pinInput.value = '';
+        }
+      }
+    });
+  }
+
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', () => {
+      localStorage.removeItem('profile-name');
+      checkAuth();
+    });
+  }
+
   const profileAvatar = document.getElementById('profile-avatar');
   const avatarUpload = document.getElementById('avatar-upload');
   const profileLangSelect = document.getElementById('profile-lang');
-
-  // Load from localStorage
-  const savedName = localStorage.getItem('profile-name') || 'Tobi the Punk';
-  if(profileNameInput) profileNameInput.value = savedName;
 
   const savedAvatar = localStorage.getItem('profile-avatar');
   if(savedAvatar && profileAvatar) {
@@ -23,13 +104,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const savedLang = localStorage.getItem('profile-lang') || 'de';
   if(profileLangSelect) profileLangSelect.value = savedLang;
-
-  // Save Name
-  if(profileNameInput) {
-    profileNameInput.addEventListener('input', (e) => {
-      localStorage.setItem('profile-name', e.target.value);
-    });
-  }
 
   // Save Language
   if(profileLangSelect) {
