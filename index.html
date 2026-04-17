@@ -27,11 +27,16 @@
   
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="theme-cardboard">
+
+  <!-- Decorative BG Shapes (theme-aware) -->
+  <div class="bg-shapes" aria-hidden="true">
+    <span></span><span></span><span></span><span></span><span></span>
+  </div>
 
   <!-- Login Overlay -->
-  <div id="view-login" class="fixed inset-0 z-[200] bg-black text-white flex flex-col items-center justify-center p-6 transition-opacity duration-500">
-    <div class="max-w-md w-full bg-[#1a1a1a] rounded-3xl shadow-2xl p-8 relative overflow-hidden border-2 border-white/10">
+  <div id="view-login" class="fixed inset-0 z-[200] flex flex-col items-center justify-center p-6 transition-opacity duration-500" style="background-color: var(--bg);">
+    <div class="max-w-md w-full rounded-3xl shadow-2xl p-8 relative overflow-hidden" style="background-color: var(--surface); border: 1px solid rgba(255,255,255,0.1);">
       
       <div class="flex border-b border-white/20 mb-6 font-sans text-sm">
         <button id="tab-login" class="flex-1 py-3 text-white border-b-2 border-orange-500 font-bold">Log in 🔐</button>
@@ -314,10 +319,10 @@
       <div class="mt-8 bg-black/40 p-4 rounded-xl max-w-sm mx-auto w-full">
         <h3 class="font-marker text-white text-xl text-center mb-2">Design</h3>
         <div class="theme-selector-container pb-2">
-          <button class="theme-btn theme-btn-cardboard active" data-theme="cardboard"></button>
-          <button class="theme-btn theme-btn-notebook" data-theme="notebook"></button>
-          <button class="theme-btn theme-btn-grunge" data-theme="grunge"></button>
-          <button class="theme-btn theme-btn-piggy" data-theme="piggy"></button>
+          <button class="theme-btn theme-btn-cardboard active" data-theme="cardboard" title="Warm"></button>
+          <button class="theme-btn theme-btn-notebook"  data-theme="notebook"  title="Ocean"></button>
+          <button class="theme-btn theme-btn-grunge"    data-theme="grunge"    title="Dark"></button>
+          <button class="theme-btn theme-btn-piggy"     data-theme="piggy"     title="Pink"></button>
         </div>
       </div>
 
