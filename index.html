@@ -138,49 +138,39 @@
       <!-- Header -->
       <div class="flex items-center justify-between px-1 pt-4 pb-2">
         <div>
-          <h1 class="text-3xl font-marker" style="color: var(--accent);">Events</h1>
-          <p id="home-greeting" class="text-white/50 font-sans text-xs mt-0.5">Willkommen zurück!</p>
+          <h1 class="text-3xl font-marker" style="color: var(--accent);">Zäme 5000</h1>
+          <p id="home-greeting" class="text-white/50 font-sans text-xs mt-0.5">Hey!</p>
         </div>
-        <div class="text-3xl">🎉</div>
+        <!-- Ideas Trigger Button -->
+        <button id="btn-ideas-trigger" class="w-12 h-12 rounded-full glass-card flex items-center justify-center text-2xl shadow-lg active:scale-95 transition-transform" title="Idee einreichen">
+          💡
+        </button>
       </div>
 
-      <!-- Next Event Hero Card -->
-      <div id="next-event-hero" class="rounded-2xl p-5 mb-4 relative overflow-hidden" style="background: linear-gradient(135deg, var(--accent2), var(--accent)); border: 1px solid rgba(255,255,255,0.15);">
-        <!-- Decorative shape inside card -->
-        <div class="absolute -right-8 -top-8 w-32 h-32 rounded-full opacity-20" style="background: white;"></div>
-        <div class="absolute -right-2 -bottom-6 w-20 h-20 rounded-full opacity-10" style="background: white;"></div>
-        <div class="relative z-10">
+      <!-- Next Event Hero (Alternative Pinned Notice Design) -->
+      <div id="next-event-hero" class="p-6 mb-8 relative overflow-hidden bg-white/5 border-2 border-dashed border-white/20" style="border-radius: 4px 60px 5px 45px / 15px 5px 50px 18px; background-attachment: fixed;">
+        <div class="absolute -right-4 -top-4 w-24 h-24 rounded-full opacity-10 bg-white rotate-12"></div>
+        <!-- Pin deco -->
+        <div class="absolute left-1/2 -top-3 -translate-x-1/2 w-8 h-8 rounded-full bg-red-600 shadow-md border-4 border-red-800 z-10"></div>
+        
+        <div class="relative z-10 mt-2">
           <div class="flex items-center gap-2 mb-3">
-            <span class="text-xs font-sans font-bold uppercase tracking-widest bg-white/20 text-white px-2 py-0.5 rounded-full">Nächstes Event</span>
-            <span class="text-xs font-sans text-white/70" id="hero-countdown">Lade...</span>
+            <span class="badge-sticker">Nächstes Event</span>
+            <span class="text-xs font-sans text-white/50" id="hero-countdown">Lade...</span>
           </div>
-          <h2 id="hero-title" class="font-marker text-2xl text-white mb-1">Lade Event...</h2>
-          <p id="hero-date" class="font-sans text-sm text-white/80 mb-1">📅 —</p>
-          <p id="hero-location" class="font-sans text-sm text-white/80 mb-1">📍 —</p>
-          <p id="hero-orgas" class="font-sans text-sm text-white/80 mb-3">👥 —</p>
-          <div class="flex gap-2 items-center">
-            <span id="hero-cost" class="font-sans font-bold text-white bg-white/20 px-3 py-1 rounded-full text-sm">💰 —</span>
-            <button id="hero-rsvp-btn" class="font-sans font-bold text-white border border-white/50 px-4 py-1 rounded-full text-sm hover:bg-white/20 transition-colors">Details →</button>
+          <h2 id="hero-title" class="font-marker text-3xl text-white mb-2 pr-4 leading-tight">Lade Event...</h2>
+          <div class="space-y-1.5 mb-5 opacity-90">
+            <p id="hero-date" class="font-sans text-sm text-white/80 flex items-center gap-2"><span>📅</span> —</p>
+            <p id="hero-location" class="font-sans text-sm text-white/80 flex items-center gap-2"><span>📍</span> —</p>
+            <p id="hero-orgas" class="font-sans text-sm text-white/80 flex items-center gap-2"><span>👥</span> —</p>
+          </div>
+          <div class="flex gap-3 items-center">
+            <span id="hero-cost" class="font-sans font-bold text-white bg-white/10 px-4 py-1.5 rounded-full text-xs border border-white/10">💰 —</span>
+            <button id="hero-rsvp-btn" class="font-sans font-bold text-white border-2 border-[color:var(--accent)] px-6 py-1.5 rounded-full text-sm hover:bg-[color:var(--accent)] transition-all">Check RSVP & Details</button>
           </div>
         </div>
       </div>
 
-      <!-- RSVP Quick Stats -->
-      <div id="hero-rsvp-bar" class="glass-card rounded-xl p-4 mb-4">
-        <div class="flex justify-between items-center mb-2">
-          <span class="font-sans text-xs text-white/60 uppercase tracking-wider">Abstimmung</span>
-          <span id="hero-deadline" class="font-sans text-xs" style="color: var(--accent);">Lade...</span>
-        </div>
-        <div class="flex gap-4">
-          <div class="text-center"><div id="rsvp-yes" class="font-marker text-2xl text-green-400">—</div><div class="text-[10px] text-white/50 font-sans">Dabei</div></div>
-          <div class="text-center"><div id="rsvp-no" class="font-marker text-2xl text-red-400">—</div><div class="text-[10px] text-white/50 font-sans">Nö</div></div>
-          <div class="text-center"><div id="rsvp-pending" class="font-marker text-2xl text-yellow-400">—</div><div class="text-[10px] text-white/50 font-sans">Offen</div></div>
-          <div class="flex-1 flex items-center">
-            <button id="btn-my-rsvp-yes" class="flex-1 py-2 rounded-l-xl font-sans text-xs font-bold text-white transition-all border border-white/10" style="background: rgba(74,222,128,0.15);">👍</button>
-            <button id="btn-my-rsvp-no" class="flex-1 py-2 rounded-r-xl font-sans text-xs font-bold text-white transition-all border border-white/10" style="background: rgba(248,113,113,0.15);">👎</button>
-          </div>
-        </div>
-      </div>
 
       <!-- All Events List -->
       <h2 class="font-marker text-xl text-white/80 mb-3">Alle Events</h2>
@@ -199,48 +189,7 @@
 
     </section>
 
-    <!-- ================================================
-         VIEW: PING
 
-         ================================================ -->
-    <section id="view-smoker" class="view-panel">
-      <h1 class="text-4xl font-marker text-center mt-4 mb-2 text-white">Treffe</h1>
-      
-      <div class="text-center w-full px-4 mb-4">
-        <div class="ping-section-title">Wo?</div>
-        <div class="ping-grid" id="ping-location">
-          <button class="ping-chip active" data-val="TL">TL</button>
-          <button class="ping-chip" data-val="Renzen">Renzen</button>
-          <button class="ping-chip" data-val="Zitas">Zitas</button>
-          <button class="ping-chip" data-val="CouCou">CouCou</button>
-          <button class="ping-chip" data-val="Be Mer">Be Mer</button>
-        </div>
-        <div class="ping-section-title">Was geht?</div>
-        <div class="ping-grid" id="ping-action">
-          <button class="ping-chip active" data-val="teeere">teeere</button>
-          <button class="ping-chip" data-val="e bierle">e bierle</button>
-          <button class="ping-chip" data-val="eine häänge">eine häänge</button>
-          <button class="ping-chip" data-val="en Isstee">en Isstee</button>
-          <button class="ping-chip" data-val="mangée">mangée</button>
-        </div>
-        <div class="ping-section-title">Wie lang?</div>
-        <div class="ping-grid" id="ping-time">
-          <button class="ping-chip active" data-val="5">5 min</button>
-          <button class="ping-chip" data-val="15">15 min</button>
-          <button class="ping-chip" data-val="30">30 min</button>
-          <button class="ping-chip" data-val="60">1 h</button>
-          <button class="ping-chip" data-val="120">2h+</button>
-        </div>
-      </div>
-
-      <div class="buzzer-container" style="height: auto; padding-bottom: 2rem;">
-        <div class="buzzer-base">
-          <button id="smoker-btn" class="buzzer-btn" style="width: 150px; height: 150px;">
-            <span class="font-marker text-2xl tracking-wider">PING!</span>
-          </button>
-        </div>
-      </div>
-    </section>
 
     <!-- ================================================
          VIEW: PROFILE
@@ -334,16 +283,19 @@
         </div>
       </div>
 
-      <!-- Ideas Dropbox (Anonymous) -->
-      <div class="glass-card rounded-2xl p-5 max-w-sm mx-auto w-full mb-6 relative overflow-hidden" style="background: rgba(139, 92, 246, 0.1); border-color: rgba(139, 92, 246, 0.2);">
-        <h3 class="font-marker text-white text-xl mb-2 flex items-center gap-2">
-          <span>💡</span> Ideen-Dropbox
-        </h3>
-        <p class="font-sans text-xs text-white/50 mb-4 italic">Anonyme Vorschläge für zukünftige Events oder Features.</p>
-        <textarea id="idea-input" rows="3" placeholder="Was sollten wir mal machen?..." class="w-full bg-white/5 border border-white/20 rounded-xl p-3 text-white font-sans text-sm outline-none resize-none mb-3"></textarea>
-        <button id="btn-submit-idea" class="w-full py-2.5 rounded-xl font-sans text-sm font-bold text-white transition-all active:scale-95" style="background: #8b5cf6;">Vorschlag abschicken</button>
-        <p id="idea-status" class="text-[10px] text-center text-white/40 font-sans mt-2"></p>
+      <!-- PING BUZZER (Moved here) -->
+      <div class="glass-card rounded-2xl p-6 max-w-sm mx-auto w-full mb-6 text-center">
+        <h3 class="font-marker text-white text-xl mb-4">📡 Sende einen PING</h3>
+        <div class="buzzer-base mx-auto w-max mb-4">
+          <button id="smoker-btn" class="buzzer-btn" style="width: 140px; height: 140px;">
+            <span class="font-marker text-2xl">PING!</span>
+          </button>
+        </div>
+        <div class="flex flex-col gap-2 opacity-60">
+           <div class="font-sans text-[10px] text-white/50 uppercase font-bold">Einstellungen waren gestern. Einfach drücken!</div>
+        </div>
       </div>
+
 
       <!-- Theme Selector -->
 
@@ -467,16 +419,39 @@
       <span class="text-2xl">📅</span>
       <span>Events</span>
     </button>
-    <button class="nav-item" data-target="view-smoker">
-      <span class="text-2xl">📡</span>
-      <span>Ping</span>
-    </button>
     <button class="nav-item" data-target="view-profile">
       <span class="text-2xl">👤</span>
       <span>Profil</span>
     </button>
+
   </nav>
 
+  <!-- ================================================
+       MODALS
+       ================================================ -->
+  
+  <!-- Idea Dropbox Modal -->
+  <div id="idea-modal" class="fixed inset-0 bg-black/80 z-[120] hidden flex-col items-center justify-center p-4 backdrop-blur-sm">
+    <div class="w-full max-w-md glass-card rounded-3xl p-6 relative">
+      <h3 class="font-marker text-white text-2xl mb-2">💡 Ideen-Dropbox</h3>
+      <p class="font-sans text-xs text-white/50 mb-4 italic">Anonyme Vorschläge für Events oder Features.</p>
+      <textarea id="idea-input" rows="4" placeholder="Was sollten wir mal machen?..." class="w-full bg-white/5 border border-white/20 rounded-xl p-4 text-white font-sans text-sm outline-none resize-none mb-4"></textarea>
+      <div class="flex gap-3">
+        <button id="btn-idea-cancel" class="flex-1 py-3 rounded-xl font-sans text-sm font-bold text-white/50 border border-white/10 active:bg-white/5">Abbrechen</button>
+        <button id="btn-submit-idea" class="flex-[2] py-3 rounded-xl font-sans text-sm font-bold text-white transition-all active:scale-95" style="background: #8b5cf6;">Abschicken</button>
+      </div>
+      <p id="idea-status" class="text-[10px] text-center text-white/40 font-sans mt-3"></p>
+    </div>
+  </div>
+
+  <!-- Event Detail Modal (Restored) -->
+  <div id="event-modal" class="fixed inset-0 bg-black/60 z-[100] hidden flex-col items-center justify-end p-0">
+    <div id="event-modal-content" class="w-full max-w-lg rounded-t-[40px] overflow-y-auto max-h-[95vh] relative shadow-2xl overflow-hidden" style="background: var(--surface);">
+      <!-- Content injected by JS -->
+    </div>
+  </div>
+
   <script src="app.js"></script>
+
 </body>
 </html>

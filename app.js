@@ -32,10 +32,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const adminPanel = document.getElementById('admin-panel');
     const pendingList = document.getElementById('admin-pending-list');
     if (!adminPanel || !pendingList) return;
-    if (!usr || !usr.is_admin) {
+    if (!usr || (usr.role !== 'admin' && usr.role !== 'organizer')) {
       adminPanel.classList.add('hidden');
       return;
     }
+
     adminPanel.classList.remove('hidden');
 
     const { data: pends } = await supabase.from('users').select('*').eq('is_approved', false);
@@ -236,38 +237,10 @@ document.addEventListener('DOMContentLoaded', () => {
       heroDeadline.textContent = daysToDeadline > 0 ? `⏳ Noch ${daysToDeadline} Tage zum Abstimmen` : 'Abstimmung geschlossen';
     }
 
-    // RSVP counts
-    if (nextEvent.id !== 'placeholder') {
-      const { data: rsvps } = await supabase.from('event_rsvp').select('status').eq('event_id', nextEvent.id);
-      const yes = rsvps?.filter(r => r.status === 'yes').length || 0;
-      const no = rsvps?.filter(r => r.status === 'no').length || 0;
-      const pending = rsvps?.filter(r => r.status === 'pending').length || 0;
-      const yesEl = document.getElementById('rsvp-yes');
-      const noEl = document.getElementById('rsvp-no');
-      const pendEl = document.getElementById('rsvp-pending');
-      if (yesEl) yesEl.textContent = yes;
-      if (noEl) noEl.textContent = no;
-      if (pendEl) pendEl.textContent = pending;
-    }
-
-    // RSVP Buttons
-    const btnYes = document.getElementById('btn-my-rsvp-yes');
-    const btnNo = document.getElementById('btn-my-rsvp-no');
-    if (btnYes && btnNo && nextEvent.id !== 'placeholder' && activeUser) {
-      const doRsvp = async (status) => {
-        await supabase.from('event_rsvp').upsert(
-          { event_id: nextEvent.id, user_name: activeUser.name, status },
-          { onConflict: 'event_id,user_name' }
-        );
-        loadHomeEvents();
-      };
-      btnYes.onclick = () => doRsvp('yes');
-      btnNo.onclick = () => doRsvp('no');
-    }
-
     // Hero detail button
     const heroBtn = document.getElementById('hero-rsvp-btn');
     if (heroBtn) heroBtn.onclick = () => openEventModal(nextEvent);
+
 
     // Events list
     if (eventsList) {
@@ -862,9 +835,116 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================================
   // 6. IDEAS DROPBOX (Phase 5) — Anonymous
   // ============================================================
+  const ideaModal = document.getElementById('idea-modal');
+  const btnIdeasTrigger = document.getElementById('btn-ideas-trigger');
+  const btnIdeaCancel = document.getElementById('btn-idea-cancel');
   const btnSubmitIdea = document.getElementById('btn-submit-idea');
   const ideaInput = document.getElementById('idea-input');
   const ideaStatus = document.getElementById('idea-status');
+
+  if (btnIdeasTrigger && ideaModal) {
+    btnIdeasTrigger.addEventListener('click', () => {
+      ideaModal.classList.remove('hidden');
+      ideaModal.classList.add('flex');
+    });
+  }
+
+  if (btnIdeaCancel && ideaModal) {
+    btnIdeaCancel.addEventListener('click', () => {
+      ideaModal.classList.add('hidden');
+      ideaModal.classList.remove('flex');
+    });
+  }
+
+  let selectedPinWords = [];
+
+  function setupPinListeners(containerId, callback) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    container.querySelectorAll('.secret-btn, .signup-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = btn.getAttribute('data-val');
+        
+        // Toggle logic
+        if (btn.classList.contains('word-selected')) {
+          btn.classList.remove('word-selected');
+          selectedPinWords = selectedPinWords.filter(w => w !== val);
+        } else {
+          if (selectedPinWords.length >= 3) {
+             btn.classList.add('shake');
+             setTimeout(() => btn.classList.remove('shake'), 400);
+             return;
+          }
+          btn.classList.add('word-selected');
+          selectedPinWords.push(val);
+        }
+        
+        if (selectedPinWords.length === 3) {
+          callback(selectedPinWords.join(' '));
+        }
+      });
+    });
+  }
+
+  // --- Login PIN ---
+  setupPinListeners('secret-selector', async (code) => {
+    if (!selectedLoginName) return;
+    const errorEl = document.getElementById('pin-error');
+    
+    const { data, error } = await supabase.from('users')
+      .select('*')
+      .eq('name', selectedLoginName)
+      .eq('login_secret', code)
+      .eq('is_approved', true)
+      .single();
+
+    if (data && !error) {
+      activeUser = data;
+      localStorage.setItem('zaeme_user', selectedLoginName);
+      checkAuth();
+      // Reset
+      selectedPinWords = [];
+      document.querySelectorAll('.word-selected').forEach(b => b.classList.remove('word-selected'));
+    } else {
+      if (errorEl) {
+        errorEl.style.opacity = '1';
+        setTimeout(() => { errorEl.style.opacity = '0'; }, 3000);
+      }
+      // Reset selection
+      selectedPinWords = [];
+      document.querySelectorAll('.word-selected').forEach(b => b.classList.remove('word-selected'));
+    }
+  });
+
+  // --- Signup PIN ---
+  const btnSubmitSignup = document.getElementById('btn-submit-signup');
+  let signupSecret = '';
+
+  setupPinListeners('signup-secret-selector', (code) => {
+    signupSecret = code;
+  });
+
+  if (btnSubmitSignup) {
+    btnSubmitSignup.addEventListener('click', async () => {
+      const name = document.getElementById('signup-name').value.trim();
+      const msg = document.getElementById('signup-msg');
+      if (!name || selectedPinWords.length < 3) {
+        if (msg) msg.textContent = 'Name und 3 Wörter wählen!';
+        return;
+      }
+      const { error } = await supabase.from('users').insert({ name, login_secret: signupSecret, is_approved: false });
+      if (!error) {
+        if (msg) {
+          msg.style.color = '#4ade80';
+          msg.textContent = 'Antrag gesendet! Warte auf Admin.';
+        }
+        setTimeout(() => location.reload(), 2000);
+      } else {
+        if (msg) msg.textContent = 'Fehler: ' + error.message;
+      }
+    });
+  }
 
   if (btnSubmitIdea && ideaInput) {
     btnSubmitIdea.addEventListener('click', async () => {
@@ -877,12 +957,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const { error } = await supabase.from('ideas').insert({ text });
 
       btnSubmitIdea.disabled = false;
-      btnSubmitIdea.textContent = 'Vorschlag abschicken';
+      btnSubmitIdea.textContent = 'Abschicken';
 
       if (!error) {
         ideaInput.value = '';
         if (ideaStatus) ideaStatus.textContent = '✓ Danke! Dein Vorschlag wurde anonym gespeichert.';
-        setTimeout(() => { if (ideaStatus) ideaStatus.textContent = ''; }, 3000);
+        setTimeout(() => { if (ideaStatus) { ideaStatus.textContent = ''; ideaModal.classList.add('hidden'); ideaModal.classList.remove('flex'); } }, 2000);
       } else {
         if (ideaStatus) ideaStatus.textContent = '❌ Fehler beim Speichern.';
       }
@@ -890,7 +970,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ============================================================
-  // 7. EVENT EDITOR (Phase 4) — Organizers Only
+  // 7. EVENT EDITOR (Phase 4) — Organizers & Admins
   // ============================================================
   const editorModal = document.getElementById('editor-modal');
   const btnOpenEditor = document.getElementById('btn-open-event-editor');
@@ -945,45 +1025,79 @@ document.addEventListener('DOMContentLoaded', () => {
         organizer_2: orga2,
         description: desc,
         mandatory_rsvp: mandatory,
-        is_published: true // Sofort veröffentlichen für jetzt
+        is_published: true
       });
 
       btnEditorSave.disabled = false;
-      btnEditorSave.textContent = 'Speichern & Veröffentlichen';
+      btnEditorSave.textContent = 'Veröffentlichen';
 
       if (!error) {
         editorModal.classList.add('hidden');
         editorModal.classList.remove('flex');
-        loadHomeEvents(); // Reload events
+        loadHomeEvents();
       } else {
-        alert('Fehler beim Speichern: ' + error.message);
+        alert('Fehler: ' + error.message);
       }
     });
   }
 
   // ============================================================
-  // 8. HALL OF FAME (Phase 5)
+  // 8. SMOKER/PING LOGIC (Buzzer)
+  // ============================================================
+  const smokerBtn = document.getElementById('smoker-btn');
+  if (smokerBtn) {
+    smokerBtn.addEventListener('click', async () => {
+      if (!activeUser) return;
+      
+      smokerBtn.disabled = true;
+      smokerBtn.classList.add('active');
+      
+      const pingMsg = `${activeUser.name} hat den PING gedrückt! 📡`;
+      
+      // Send a ping? Currently we just show a local alert as POC
+      showCustomAlert(pingMsg);
+
+      setTimeout(() => {
+        smokerBtn.disabled = false;
+        smokerBtn.classList.remove('active');
+      }, 5000);
+    });
+  }
+
+  function showCustomAlert(msg) {
+    const alertBox = document.getElementById('custom-alert');
+    const msgEl = document.getElementById('custom-alert-msg');
+    if (!alertBox || !msgEl) return;
+    
+    msgEl.textContent = msg;
+    alertBox.classList.add('active');
+    
+    document.getElementById('alert-ignore')?.addEventListener('click', () => alertBox.classList.remove('active'));
+    document.getElementById('alert-join')?.addEventListener('click', () => alertBox.classList.remove('active'));
+  }
+
+  // ============================================================
+  // 9. HALL OF FAME & INITIAL BOOT
   // ============================================================
   async function loadHallOfFame() {
     const hofContainer = document.getElementById('hall-of-fame');
     if (!hofContainer) return;
-
-    // Fetch top media items (e.g. stickers or quotes from past events)
-    // For now, we manually curate via a specific event_media query or just show placeholders
     const { data: highlights } = await supabase.from('event_media').select('*').limit(3).order('created_at', { ascending: false });
-
     if (!highlights || highlights.length === 0) return;
-
-    // Simple display logic for HOF
-    // hofContainer.innerHTML = ... (to be expanded)
+    
+    // Simple curation UI
+    hofContainer.innerHTML = highlights.map(m => `
+      <div class="glass-card rounded-xl overflow-hidden mb-2 relative">
+        <img src="${m.content_url}" class="w-full h-40 object-cover opacity-80">
+        <div class="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black to-transparent">
+          <p class="font-marker text-white text-sm">Best of moment</p>
+          <p class="font-sans text-[10px] text-white/60">Gepostet von ${m.user_name}</p>
+        </div>
+      </div>
+    `).join('');
   }
 
-  // Load HOF on boot
   loadHallOfFame();
-
-  // ============================================================
-  // 9. INITIAL BOOT & UI GLUE
-  // ============================================================
   checkAuth();
 
   document.querySelectorAll('.nav-item').forEach(btn => {
@@ -1006,5 +1120,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
 });
+
 
 

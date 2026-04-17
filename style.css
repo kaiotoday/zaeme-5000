@@ -393,22 +393,86 @@ body::after {
 }
 
 /* Glassmorphism card — used throughout the new design */
-.glass-card {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  transition: border-color 0.2s;
-}
-.glass-card:hover { border-color: rgba(255,255,255,0.18); }
+/* ============================================================
+   ALTERNATIVE LBP DESIGN SYSTEM (Phase 2)
+   ============================================================ */
 
-.polaroid {
-  background-color: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 0.5rem 0.5rem 2rem 0.5rem;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+:root {
+  --wobbly-radius: 4px 60px 5px 45px / 15px 5px 50px 18px;
+  --torn-paper-path: polygon(0% 2%, 5% 0%, 10% 4%, 15% 1%, 20% 5%, 25% 1%, 30% 6%, 35% 2%, 40% 7%, 45% 3%, 50% 8%, 55% 4%, 60% 9%, 65% 5%, 70% 10%, 75% 6%, 80% 11%, 85% 7%, 90% 12%, 95% 8%, 100% 13%, 100% 88%, 95% 93%, 90% 87%, 85% 92%, 80% 86%, 75% 91%, 70% 85%, 65% 90%, 60% 84%, 55% 89%, 50% 83%, 45% 88%, 40% 82%, 35% 87%, 30% 81%, 25% 86%, 20% 80%, 15% 85%, 10% 79%, 5% 84%, 0% 78%);
 }
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+  position: relative;
+  overflow: visible;
+}
+
+/* Torn Paper Card Look */
+.event-card {
+  clip-path: var(--torn-paper-path);
+  background: white !important;
+  color: #222 !important;
+  padding: 2.5rem 1.5rem 3rem 1.5rem !important;
+  transform: rotate(-1.5deg);
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.event-card:nth-child(even) {
+  transform: rotate(1deg);
+  background: #fcfcfc !important;
+}
+
+.event-card:hover {
+  transform: scale(1.02) rotate(0deg);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+}
+
+.event-card h3 { color: #111 !important; }
+.event-card p { color: #555 !important; }
+
+/* Tape Deco */
+.event-card::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-3deg);
+  width: 70px;
+  height: 25px;
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(2px);
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+  z-index: 5;
+}
+
+.theme-cardboard .event-card::before { background: rgba(245, 158, 11, 0.3); }
+.theme-piggy .event-card::before { background: rgba(236, 72, 153, 0.3); }
+
+/* Hero Pinned Notice */
+#next-event-hero {
+  box-shadow: 0 15px 45px rgba(0,0,0,0.5);
+  transition: transform 0.3s;
+}
+
+#next-event-hero::after {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100px;
+  height: 30px;
+  background: rgba(255,255,255,0.1);
+  backdrop-filter: blur(3px);
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
 
 /* ============================================================
    NAVBAR
@@ -474,38 +538,35 @@ body::after {
    ============================================================ */
 .buzzer-container { display: flex; justify-content: center; align-items: center; height: 60dvh; }
 .buzzer-base {
-  background: var(--surface);
+  background: #1a1a1a;
   border-radius: 50%;
-  padding: 10px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-  border: 3px solid var(--border);
+  padding: 12px;
+  box-shadow: inset 0 5px 15px rgba(0,0,0,0.8), 0 15px 35px rgba(0,0,0,0.6);
+  border: 5px solid #222;
   transition: background-color 0.6s;
 }
 .buzzer-btn {
-  width: 200px; height: 200px;
-  background: radial-gradient(circle at 30% 30%, var(--accent), color-mix(in srgb, var(--accent) 60%, black));
+  background: radial-gradient(circle at 30% 30%, #ff4d4d, #b30000);
   border-radius: 50%;
   border: none;
   cursor: pointer;
   box-shadow:
     inset -5px -10px 20px rgba(0,0,0,0.4),
     inset 5px 10px 20px rgba(255,255,255,0.2),
-    0px 12px 0px color-mix(in srgb, var(--accent) 40%, black),
-    0px 20px 40px rgba(0,0,0,0.6),
-    0 0 0 0 var(--accent);
-  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    0px 14px 0px #800000,
+    0px 22px 50px rgba(0,0,0,0.7);
+  transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex; justify-content: center; align-items: center;
   color: white;
   text-shadow: 2px 2px 4px rgba(0,0,0,0.6);
 }
-.buzzer-btn:active {
-  transform: translateY(12px);
+.buzzer-btn:active, .buzzer-btn.active {
+  transform: translateY(10px);
   box-shadow:
     inset -5px -10px 20px rgba(0,0,0,0.4),
     inset 5px 10px 20px rgba(255,255,255,0.2),
-    0px 0px 0px #000,
-    0px 4px 10px rgba(0,0,0,0.6),
-    0 0 40px var(--accent);
+    0px 2px 0px #800000,
+    0px 8px 15px rgba(0,0,0,0.7);
 }
 
 /* ============================================================
