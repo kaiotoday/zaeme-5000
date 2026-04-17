@@ -13,8 +13,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================================
   let activeUser = null;
   let selectedLoginName = '';
-  let loginSecret = { 1: null, 2: null, 3: null };
-  let signupSecret = { 1: null, 2: null, 3: null };
+  let loginSecretArray = [];
+  let signupSecretArray = [];
+
   let mediaRecorder;
   let audioChunks = [];
   let isRecording = false;
@@ -24,9 +25,18 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================================
 
   function resetSecret(btnsCollection, stateObj) {
-    if (stateObj) Object.assign(stateObj, { 1: null, 2: null, 3: null });
-    btnsCollection.forEach(b => delete b.dataset.active);
+    if (stateObj) {
+      if (Array.isArray(stateObj)) stateObj.length = 0;
+      else Object.assign(stateObj, { 1: null, 2: null, 3: null });
+    }
+    if (btnsCollection) {
+      btnsCollection.forEach(b => {
+        delete b.dataset.active;
+        b.classList.remove('word-selected');
+      });
+    }
   }
+
 
   async function setupAdminPanel(usr) {
     const adminPanel = document.getElementById('admin-panel');
@@ -116,9 +126,10 @@ document.addEventListener('DOMContentLoaded', () => {
           if (pinWelcomeMsg) pinWelcomeMsg.textContent = `Hallo ${selectedLoginName} 👋`;
           if (pinModal) {
             pinModal.classList.remove('hidden');
-            resetSecret(secretBtns, loginSecret);
+            resetSecret(secretBtns, loginSecretArray);
             setTimeout(() => pinModal.classList.remove('opacity-0'), 50);
           }
+
         });
       });
     });
@@ -891,9 +902,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  let selectedPinWords = [];
-
-  function setupPinListeners(containerId, callback) {
+  function setupPinInput(containerId, targetArray, callback) {
     const container = document.getElementById(containerId);
     if (!container) return;
 
@@ -901,32 +910,33 @@ document.addEventListener('DOMContentLoaded', () => {
       btn.addEventListener('click', () => {
         const val = btn.getAttribute('data-val');
         
-        // Toggle logic
         if (btn.classList.contains('word-selected')) {
           btn.classList.remove('word-selected');
-          selectedPinWords = selectedPinWords.filter(w => w !== val);
+          const idx = targetArray.indexOf(val);
+          if (idx > -1) targetArray.splice(idx, 1);
         } else {
-          if (selectedPinWords.length >= 3) {
-             btn.classList.add('shake');
-             setTimeout(() => btn.classList.remove('shake'), 400);
-             return;
+          if (targetArray.length >= 3) {
+            btn.classList.add('shake');
+            setTimeout(() => btn.classList.remove('shake'), 400);
+            return;
           }
           btn.classList.add('word-selected');
-          selectedPinWords.push(val);
+          targetArray.push(val);
         }
-        
-        if (selectedPinWords.length === 3) {
-          callback(selectedPinWords.join(' '));
+
+        if (targetArray.length === 3 && callback) {
+          callback(targetArray.join(' '));
         }
       });
     });
   }
 
-  // --- Login PIN ---
-  setupPinListeners('secret-selector', async (code) => {
+  // Init Login PIN
+  setupPinInput('secret-selector', loginSecretArray, async (code) => {
     if (!selectedLoginName) return;
     const errorEl = document.getElementById('pin-error');
-    
+    const secretBtns = document.querySelectorAll('.secret-btn');
+
     const { data, error } = await supabase.from('users')
       .select('*')
       .eq('name', selectedLoginName)
@@ -937,49 +947,56 @@ document.addEventListener('DOMContentLoaded', () => {
     if (data && !error) {
       activeUser = data;
       localStorage.setItem('zaeme_user', selectedLoginName);
+      localStorage.setItem('profile-name', selectedLoginName);
       checkAuth();
-      // Reset
-      selectedPinWords = [];
-      document.querySelectorAll('.word-selected').forEach(b => b.classList.remove('word-selected'));
+      resetSecret(secretBtns, loginSecretArray);
+      document.getElementById('pin-modal').classList.add('hidden');
     } else {
       if (errorEl) {
         errorEl.style.opacity = '1';
         setTimeout(() => { errorEl.style.opacity = '0'; }, 3000);
       }
-      // Reset selection
-      selectedPinWords = [];
-      document.querySelectorAll('.word-selected').forEach(b => b.classList.remove('word-selected'));
+      resetSecret(secretBtns, loginSecretArray);
     }
   });
 
-  // --- Signup PIN ---
+  // Init Signup PIN
+  setupPinInput('signup-secret-selector', signupSecretArray);
+
   const btnSubmitSignup = document.getElementById('btn-submit-signup');
-  let signupSecret = '';
-
-  setupPinListeners('signup-secret-selector', (code) => {
-    signupSecret = code;
-  });
-
   if (btnSubmitSignup) {
     btnSubmitSignup.addEventListener('click', async () => {
       const name = document.getElementById('signup-name').value.trim();
       const msg = document.getElementById('signup-msg');
-      if (!name || selectedPinWords.length < 3) {
+      const signupBtns = document.querySelectorAll('.signup-btn');
+
+      if (!name || signupSecretArray.length < 3) {
         if (msg) msg.textContent = 'Name und 3 Wörter wählen!';
         return;
       }
-      const { error } = await supabase.from('users').insert({ name, login_secret: signupSecret, is_approved: false });
+      const code = signupSecretArray.join(' ');
+      const { error } = await supabase.from('users').insert({ name, login_secret: code, is_approved: false });
       if (!error) {
         if (msg) {
           msg.style.color = '#4ade80';
           msg.textContent = 'Antrag gesendet! Warte auf Admin.';
         }
+        resetSecret(signupBtns, signupSecretArray);
         setTimeout(() => location.reload(), 2000);
       } else {
         if (msg) msg.textContent = 'Fehler: ' + error.message;
       }
     });
   }
+
+  const cancelLogin = document.getElementById('cancel-login');
+  if (cancelLogin) {
+    cancelLogin.addEventListener('click', () => {
+      document.getElementById('pin-modal').classList.add('hidden');
+      resetSecret(document.querySelectorAll('.secret-btn'), loginSecretArray);
+    });
+  }
+
 
   if (btnSubmitIdea && ideaInput) {
     btnSubmitIdea.addEventListener('click', async () => {
