@@ -180,6 +180,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Load event homepage data
       loadHomeEvents();
+      // Load ping feed
+      setTimeout(() => loadPingFeed(), 500);
 
     } else {
       if (viewLogin) viewLogin.classList.remove('hidden');
@@ -1094,39 +1096,198 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ============================================================
-  // 8. SMOKER/PING LOGIC (Buzzer)
+  // 8. PING SYSTEM — Full Composer + Supabase + Real-time Feed
   // ============================================================
+  let activePingActivity = '';
+  let activePingLocation = '';
+  let activePingTime = 'Jetzt sofort';
+  let currentPingId = null;
+
+  function setupSingleSelectChips(containerId, onSelect) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.querySelectorAll('.ping-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        container.querySelectorAll('.ping-chip').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        onSelect(btn.getAttribute('data-val'));
+      });
+    });
+  }
+
+  setupSingleSelectChips('ping-activity-chips', v => { activePingActivity = v; });
+  setupSingleSelectChips('ping-location-chips', v => { activePingLocation = v; });
+  setupSingleSelectChips('ping-time-chips',     v => { activePingTime = v; });
+
+  // Let custom inputs override chip selections
+  document.getElementById('ping-custom-activity')?.addEventListener('input', e => {
+    activePingActivity = e.target.value;
+    document.querySelectorAll('#ping-activity-chips .ping-chip').forEach(b => b.classList.remove('active'));
+  });
+  document.getElementById('ping-custom-location')?.addEventListener('input', e => {
+    activePingLocation = e.target.value;
+    document.querySelectorAll('#ping-location-chips .ping-chip').forEach(b => b.classList.remove('active'));
+  });
+
   const smokerBtn = document.getElementById('smoker-btn');
   if (smokerBtn) {
     smokerBtn.addEventListener('click', async () => {
       if (!activeUser) return;
-      
+      const activity = activePingActivity || '📡 Allgemeiner Ping';
+      const location = activePingLocation || '';
+      const time = activePingTime;
+
       smokerBtn.disabled = true;
       smokerBtn.classList.add('active');
-      
-      const pingMsg = `${activeUser.name} hat den PING gedrückt! 📡`;
-      
-      // Send a ping? Currently we just show a local alert as POC
-      showCustomAlert(pingMsg);
+
+      const { data, error } = await supabase.from('pings').insert({
+        sender_name: activeUser.name,
+        sender_avatar: activeUser.avatar_url || '',
+        activity,
+        location,
+        time_hint: time,
+        joiners: []
+      }).select().single();
+
+      if (!error && data) {
+        currentPingId = data.id;
+        loadPingFeed();
+        showPingAlert(data, activeUser.name);
+      }
 
       setTimeout(() => {
         smokerBtn.disabled = false;
         smokerBtn.classList.remove('active');
-      }, 5000);
+      }, 10000);
     });
   }
 
-  function showCustomAlert(msg) {
+  async function loadPingFeed() {
+    const feed = document.getElementById('ping-feed');
+    if (!feed) return;
+    const cutoff = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(); // last 2h
+    const { data: pings } = await supabase.from('pings').select('*').gte('created_at', cutoff).order('created_at', { ascending: false }).limit(20);
+    if (!pings || pings.length === 0) {
+      feed.innerHTML = '<div class="text-[10px] font-sans text-white/20 text-center italic py-2">Noch keine Pings in den letzten 2h</div>';
+      return;
+    }
+    feed.innerHTML = pings.map(p => {
+      const joiners = Array.isArray(p.joiners) ? p.joiners : [];
+      const avatarStyle = p.sender_avatar ? `background-image:url('${p.sender_avatar}');background-size:cover;` : '';
+      return `
+      <div class="flex items-start gap-3 bg-white/5 rounded-xl p-3 ping-feed-item" data-id="${p.id}">
+        <div class="w-9 h-9 rounded-full bg-white/10 flex-shrink-0" style="${avatarStyle} border:2px solid var(--accent);"></div>
+        <div class="flex-1 min-w-0">
+          <div class="flex gap-1 items-baseline">
+            <span class="font-marker text-white text-sm">${p.sender_name}</span>
+            <span class="text-[9px] text-white/30 font-sans">• ${p.activity}</span>
+          </div>
+          ${p.location ? `<div class="text-[10px] text-white/50 font-sans">📍 ${p.location}</div>` : ''}
+          <div class="text-[10px] text-white/50 font-sans">⏰ ${p.time_hint}</div>
+          ${joiners.length > 0 ? `<div class="text-[10px] text-green-400 font-sans mt-1">⚡ ${joiners.join(', ')} dabei</div>` : ''}
+        </div>
+        ${activeUser && activeUser.name !== p.sender_name && !joiners.includes(activeUser.name) ? `<button class="join-ping-btn text-[10px] font-bold font-sans px-2 py-1 rounded-lg" style="background:var(--accent);color:white;" data-id="${p.id}" data-joiners='${JSON.stringify(joiners)}'>Join</button>` : ''}
+      </div>`;
+    }).join('');
+
+    // Join buttons
+    feed.querySelectorAll('.join-ping-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!activeUser) return;
+        const id = btn.getAttribute('data-id');
+        const currentJoiners = JSON.parse(btn.getAttribute('data-joiners') || '[]');
+        const newJoiners = [...currentJoiners, activeUser.name];
+        await supabase.from('pings').update({ joiners: newJoiners }).eq('id', id);
+        loadPingFeed();
+      });
+    });
+  }
+
+  function showPingAlert(pingData, myName) {
     const alertBox = document.getElementById('custom-alert');
     const msgEl = document.getElementById('custom-alert-msg');
+    const nameEl = document.getElementById('alert-sender-name');
+    const avatarEl = document.getElementById('alert-avatar');
+    const joinersEl = document.getElementById('alert-joiners');
     if (!alertBox || !msgEl) return;
-    
-    msgEl.textContent = msg;
-    alertBox.classList.add('active');
-    
-    document.getElementById('alert-ignore')?.addEventListener('click', () => alertBox.classList.remove('active'));
-    document.getElementById('alert-join')?.addEventListener('click', () => alertBox.classList.remove('active'));
+
+    if (nameEl) nameEl.textContent = pingData.sender_name;
+    if (avatarEl && pingData.sender_avatar) {
+      avatarEl.style.backgroundImage = `url('${pingData.sender_avatar}')`;
+      avatarEl.style.backgroundSize = 'cover';
+    }
+
+    let msg = pingData.activity;
+    if (pingData.location) msg += ` • ${pingData.location}`;
+    if (pingData.time_hint) msg += ` • ${pingData.time_hint}`;
+    if (msgEl) msgEl.textContent = msg;
+    if (joinersEl) joinersEl.textContent = '';
+
+    alertBox.classList.add('show');
+
+    const ignoreBtn = document.getElementById('alert-ignore');
+    const joinBtn = document.getElementById('alert-join');
+
+    // Clone to remove old listeners
+    const newIgnore = ignoreBtn?.cloneNode(true);
+    const newJoin = joinBtn?.cloneNode(true);
+    ignoreBtn?.parentNode?.replaceChild(newIgnore, ignoreBtn);
+    joinBtn?.parentNode?.replaceChild(newJoin, joinBtn);
+
+    newIgnore?.addEventListener('click', () => alertBox.classList.remove('show'));
+    newJoin?.addEventListener('click', async () => {
+      if (!activeUser || myName === pingData.sender_name) return;
+      const { data: fresh } = await supabase.from('pings').select('joiners').eq('id', pingData.id).single();
+      const existing = Array.isArray(fresh?.joiners) ? fresh.joiners : [];
+      if (!existing.includes(activeUser.name)) {
+        const updated = [...existing, activeUser.name];
+        await supabase.from('pings').update({ joiners: updated }).eq('id', pingData.id);
+        if (joinersEl) joinersEl.textContent = `⚡ Du bist dabei: ${updated.join(', ')}`;
+        loadPingFeed();
+      }
+      alertBox.classList.remove('show');
+    });
+
+    setTimeout(() => alertBox.classList.remove('show'), 12000);
   }
+
+  // Local polling instead of Supabase Realtime (to save costs)
+  let lastSeenPingIds = new Set();
+  
+  setInterval(async () => {
+    if (!activeUser) return;
+    
+    const cutoff = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(); // last 2h
+    const { data: recentPings } = await supabase.from('pings')
+      .select('*')
+      .gte('created_at', cutoff)
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    if (recentPings && recentPings.length > 0) {
+      if (lastSeenPingIds.size === 0) {
+        // Initial load: just record existing IDs so we don't spam alerts on boot
+        recentPings.forEach(p => lastSeenPingIds.add(p.id));
+      } else {
+        let hasNew = false;
+        
+        recentPings.forEach(p => {
+          if (!lastSeenPingIds.has(p.id)) {
+            // New ping found!
+            lastSeenPingIds.add(p.id);
+            hasNew = true;
+            if (p.sender_name !== activeUser.name) {
+              showPingAlert(p, p.sender_name);
+            }
+          }
+        });
+        
+        // We reload feed to ensure joiners are updated, even if no new ping (a bit dirty but works without realtime update events)
+        loadPingFeed();
+      }
+    }
+  }, 10000); // Poll every 10 seconds
+
 
   // ============================================================
   // 9. HALL OF FAME & INITIAL BOOT
@@ -1134,13 +1295,33 @@ document.addEventListener('DOMContentLoaded', () => {
   async function loadHallOfFame() {
     const hofContainer = document.getElementById('hall-of-fame');
     if (!hofContainer) return;
-    // Populate categories
-    document.getElementById('hof-sticker').innerHTML = highlights.filter(m => m.type === 'sticker')[0] ? `<img src="${highlights.filter(m => m.type === 'sticker')[0].content_url}" class="w-full h-full object-cover">` : '<div class="w-full h-full flex items-center justify-center text-[8px] text-white/20">TBD</div>';
-    document.getElementById('hof-quote').textContent = highlights.filter(m => m.type === 'quote')[0]?.text_content || '"Noch keine Quotes"';
-    document.getElementById('hof-schnapps').textContent = "Bierpong im TL 2026"; // Hardcoded example for schnappsidee as per vibe
 
-    hofContainer.innerHTML = highlights.map(m => `
+    const { data: highlights } = await supabase.from('event_media').select('*').order('created_at', { ascending: false }).limit(10);
+    if (!highlights || highlights.length === 0) {
+      hofContainer.innerHTML = '<div class="text-center text-white/20 text-xs font-sans italic py-4">Noch keine Memories</div>';
+      // Still fill the specific slots with placeholders
+      const hofSticker = document.getElementById('hof-sticker');
+      const hofQuote = document.getElementById('hof-quote');
+      if (hofSticker) hofSticker.innerHTML = '<div class="w-full h-full flex items-center justify-center text-[8px] text-white/20">TBD</div>';
+      if (hofQuote) hofQuote.textContent = '"Noch keine Quotes"';
+      return;
+    }
 
+    // Fill Award slots
+    const firstSticker = highlights.find(m => m.type === 'sticker');
+    const firstQuote = highlights.find(m => m.type === 'quote');
+    const hofSticker = document.getElementById('hof-sticker');
+    const hofQuote = document.getElementById('hof-quote');
+    const hofSchnapps = document.getElementById('hof-schnapps');
+
+    if (hofSticker) hofSticker.innerHTML = firstSticker
+      ? `<img src="${firstSticker.content_url}" class="w-full h-full object-cover">`
+      : '<div class="w-full h-full flex items-center justify-center text-[8px] text-white/20">TBD</div>';
+    if (hofQuote) hofQuote.textContent = firstQuote?.text_content || '"Noch keine Quotes"';
+    if (hofSchnapps) hofSchnapps.textContent = 'Bierpong im TL 2026'; // Curated
+
+    // General feed
+    hofContainer.innerHTML = highlights.filter(m => m.content_url).map(m => `
       <div class="glass-card rounded-xl overflow-hidden mb-2 relative">
         <img src="${m.content_url}" class="w-full h-40 object-cover opacity-80">
         <div class="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black to-transparent">

@@ -300,16 +300,59 @@
         </div>
       </div>
 
-      <!-- PING BUZZER (Moved here) -->
-      <div class="glass-card rounded-2xl p-6 max-w-sm mx-auto w-full mb-6 text-center">
-        <h3 class="font-marker text-white text-xl mb-4">📡 Sende einen PING</h3>
-        <div class="buzzer-base mx-auto w-max mb-4">
-          <button id="smoker-btn" class="buzzer-btn" style="width: 140px; height: 140px;">
+      <!-- PING COMPOSER (Full Featured) -->
+      <div class="glass-card rounded-2xl p-5 max-w-sm mx-auto w-full mb-6" id="ping-composer">
+        <h3 class="font-marker text-white text-xl mb-4">📡 PING senden</h3>
+
+        <!-- Activity Chips -->
+        <div class="mb-3">
+          <div class="text-[9px] text-white/40 font-bold uppercase tracking-widest mb-2">Was machst du?</div>
+          <div class="flex flex-wrap gap-2" id="ping-activity-chips">
+            <button class="ping-chip" data-val="🚬 Rauchen">🚬 Rauchen</button>
+            <button class="ping-chip" data-val="🍺 Bier holen">🍺 Bier holen</button>
+            <button class="ping-chip" data-val="🏓 Beerpong">🏓 Beerpong</button>
+            <button class="ping-chip" data-val="🎵 Musik">🎵 Musik</button>
+            <button class="ping-chip" data-val="🍕 Essen">🍕 Essen</button>
+            <button class="ping-chip" data-val="🕹️ Zocken">🕹️ Zocken</button>
+          </div>
+          <input type="text" id="ping-custom-activity" placeholder="Oder eigene Aktivität eingeben..." class="mt-2 w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white font-sans text-sm outline-none">
+        </div>
+
+        <!-- Location Chips -->
+        <div class="mb-3">
+          <div class="text-[9px] text-white/40 font-bold uppercase tracking-widest mb-2">Wo?</div>
+          <div class="flex flex-wrap gap-2" id="ping-location-chips">
+            <button class="ping-chip" data-val="Draussen">🌿 Draussen</button>
+            <button class="ping-chip" data-val="Balkon">🏠 Balkon</button>
+            <button class="ping-chip" data-val="Wintergarten">🌿 Wintergarten</button>
+            <button class="ping-chip" data-val="Keller">🪨 Keller</button>
+            <button class="ping-chip" data-val="Wohnzimmer">🛋️ Wohnzimmer</button>
+          </div>
+          <input type="text" id="ping-custom-location" placeholder="Oder eigenen Ort eingeben..." class="mt-2 w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white font-sans text-sm outline-none">
+        </div>
+
+        <!-- Time Chips -->
+        <div class="mb-5">
+          <div class="text-[9px] text-white/40 font-bold uppercase tracking-widest mb-2">Wann?</div>
+          <div class="flex flex-wrap gap-2" id="ping-time-chips">
+            <button class="ping-chip" data-val="Jetzt sofort">⚡ Jetzt</button>
+            <button class="ping-chip" data-val="In 5 Min">🕐 5 Min</button>
+            <button class="ping-chip" data-val="In 10 Min">🕑 10 Min</button>
+            <button class="ping-chip" data-val="In 30 Min">🕑 30 Min</button>
+          </div>
+        </div>
+
+        <!-- Buzzer -->
+        <div class="buzzer-base mx-auto w-max mb-3">
+          <button id="smoker-btn" class="buzzer-btn" style="width: 130px; height: 130px;">
             <span class="font-marker text-2xl">PING!</span>
           </button>
         </div>
-        <div class="flex flex-col gap-2 opacity-60">
-           <div class="font-sans text-[10px] text-white/50 uppercase font-bold">Einstellungen waren gestern. Einfach drücken!</div>
+
+        <!-- Active Pings Feed -->
+        <div class="border-t border-white/10 pt-4 mt-2">
+          <div class="text-[9px] text-white/40 font-bold uppercase tracking-widest mb-3">Aktive Pings</div>
+          <div id="ping-feed" class="flex flex-col gap-2"></div>
         </div>
       </div>
 
@@ -351,20 +394,26 @@
   <!-- ================================================
        CUSTOM NOTIFICATION ALERT
        ================================================ -->
-  <div id="custom-alert" class="ios-alert">
-    <div class="flex items-center gap-2 mb-1 px-4 pt-3">
-      <span class="text-lg">🏴‍☠️</span>
-      <div class="flex-1 text-[13px] font-sans flex justify-between" style="color: var(--text-muted);">
-        <span class="uppercase tracking-wide font-semibold">Zäme</span>
-        <span>jetzt</span>
+  <!-- PING NOTIFICATION (Rich) -->
+  <div id="custom-alert" class="ios-alert" style="padding: 0;">
+    <div class="p-4 pb-0">
+      <div class="flex items-center gap-3 mb-2">
+        <!-- Sender Avatar -->
+        <div id="alert-avatar" class="w-12 h-12 rounded-full bg-white/10 border-2 flex-shrink-0 overflow-hidden" style="border-color: var(--accent); background-size: cover; background-position: center;"></div>
+        <div class="flex-1 min-w-0">
+          <div class="flex justify-between items-baseline">
+            <span id="alert-sender-name" class="font-marker text-white text-base">...</span>
+            <span id="alert-time" class="font-sans text-[10px] text-white/40">jetzt</span>
+          </div>
+          <p id="custom-alert-msg" class="font-sans text-sm text-white/80 mt-0.5 leading-snug"></p>
+        </div>
       </div>
+      <!-- Join List -->
+      <div id="alert-joiners" class="font-sans text-[10px] text-white/50 italic mb-3"></div>
     </div>
-    <div class="px-4 pb-3">
-      <p id="custom-alert-msg" class="font-sans font-medium text-white text-[15px] leading-snug"></p>
-    </div>
-    <div class="flex border-t w-full font-sans font-medium text-[15px]" style="border-color: rgba(255,255,255,0.1);">
-      <button id="alert-ignore" class="flex-1 py-3 text-center text-white/40 border-r active:bg-white/5 transition-colors" style="border-color: rgba(255,255,255,0.1);">Schliessen</button>
-      <button id="alert-join" class="flex-1 py-3 text-center font-bold active:bg-white/5 transition-colors" style="color: var(--accent);">Join ⚡️</button>
+    <div class="flex border-t w-full font-sans font-semibold text-[14px]" style="border-color: rgba(255,255,255,0.1);">
+      <button id="alert-ignore" class="flex-1 py-3.5 text-center text-white/40 border-r active:bg-white/5" style="border-color: rgba(255,255,255,0.1);">Schliessen</button>
+      <button id="alert-join" class="flex-1 py-3.5 text-center font-bold active:bg-white/10" style="color: var(--accent);">Join ⚡️</button>
     </div>
   </div>
 
