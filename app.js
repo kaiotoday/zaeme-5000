@@ -55,15 +55,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const loadLoginNames = async () => {
     if(!loginNameGrid) return;
+    console.log("Versuche Accounts zu laden...");
     const { data: users, error } = await supabase.from('users').select('name').eq('is_approved', true);
-    if(error || !users || users.length === 0) {
-       loginNameGrid.innerHTML = '<div class="col-span-2 text-center text-white/50 text-xs py-4">Noch keine freigeschalteten Accounts.</div>';
+    
+    if(error) {
+       console.error("Supabase Fehler beim Laden der Accounts:", error);
+       loginNameGrid.innerHTML = `<div class="col-span-2 text-center text-red-400 text-xs py-4">
+         Fehler beim Laden!<br>Hast du das SQL-Script in Supabase schon ausgeführt?<br>
+         <span class="opacity-50">(${error.message})</span>
+       </div>`;
        return;
     }
+
+    if(!users || users.length === 0) {
+       loginNameGrid.innerHTML = '<div class="col-span-2 text-center text-white/50 text-xs py-4">Noch keine freigeschalteten Accounts.<br>Registriere dich zuerst!</div>';
+       return;
+    }
+    
     loginNameGrid.innerHTML = '';
     users.forEach(u => {
        loginNameGrid.innerHTML += `<button class="login-name-btn bg-white/5 border-2 border-white/10 rounded-xl py-4 font-marker text-xl text-white shadow-sm hover:border-orange-400 hover:text-orange-500 hover:bg-white/10 transition-all">${u.name}</button>`;
     });
+    
     // Re-attach listeners dynamically
     document.querySelectorAll('.login-name-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
