@@ -444,8 +444,17 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="text-[10px] text-white/40 font-sans mb-1 uppercase tracking-wider">Organisatoren</div>
           <div class="font-sans text-sm text-white font-bold">👥 ${ev.organizer_1 || '?'} & ${ev.organizer_2 || '?'}</div>
         </div>
+        ${ev.mandatory_rsvp ? `
+        <div class="col-span-2 p-3 rounded-xl border-2 border-dashed border-red-500/30 bg-red-500/10 flex items-center gap-3">
+          <span class="text-2xl">⚠️</span>
+          <div>
+            <div class="font-marker text-sm text-red-400">Verpflichtende Anmeldung</div>
+            <div class="font-sans text-[10px] text-white/60">Für dieses Event müssen Plätze/Tickets reserviert werden. Bitte gib zeitnah Bescheid!</div>
+          </div>
+        </div>` : ''}
         ${ev.description ? `<div class="glass-card rounded-xl p-3 col-span-2"><p class="font-sans text-sm text-white/70 leading-relaxed">${ev.description}</p></div>` : ''}
       </div>
+
 
       <!-- RSVP Section -->
       <h3 class="font-marker text-lg text-white mb-3">Abstimmung</h3>
@@ -851,13 +860,132 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ============================================================
-  // 5. INITIAL BOOT
+  // 6. IDEAS DROPBOX (Phase 5) — Anonymous
+  // ============================================================
+  const btnSubmitIdea = document.getElementById('btn-submit-idea');
+  const ideaInput = document.getElementById('idea-input');
+  const ideaStatus = document.getElementById('idea-status');
+
+  if (btnSubmitIdea && ideaInput) {
+    btnSubmitIdea.addEventListener('click', async () => {
+      const text = ideaInput.value.trim();
+      if (!text) return;
+
+      btnSubmitIdea.disabled = true;
+      btnSubmitIdea.textContent = '...';
+
+      const { error } = await supabase.from('ideas').insert({ text });
+
+      btnSubmitIdea.disabled = false;
+      btnSubmitIdea.textContent = 'Vorschlag abschicken';
+
+      if (!error) {
+        ideaInput.value = '';
+        if (ideaStatus) ideaStatus.textContent = '✓ Danke! Dein Vorschlag wurde anonym gespeichert.';
+        setTimeout(() => { if (ideaStatus) ideaStatus.textContent = ''; }, 3000);
+      } else {
+        if (ideaStatus) ideaStatus.textContent = '❌ Fehler beim Speichern.';
+      }
+    });
+  }
+
+  // ============================================================
+  // 7. EVENT EDITOR (Phase 4) — Organizers Only
+  // ============================================================
+  const editorModal = document.getElementById('editor-modal');
+  const btnOpenEditor = document.getElementById('btn-open-event-editor');
+  const btnEditorCancel = document.getElementById('btn-editor-cancel');
+  const btnEditorSave = document.getElementById('btn-editor-save');
+
+  if (btnOpenEditor && editorModal) {
+    btnOpenEditor.addEventListener('click', () => {
+      editorModal.classList.remove('hidden');
+      editorModal.classList.add('flex');
+      // Reset form
+      ['edit-title', 'edit-date', 'edit-cost', 'edit-location', 'edit-location-url', 'edit-orga1', 'edit-orga2', 'edit-desc'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+      const mand = document.getElementById('edit-mandatory');
+      if (mand) mand.checked = false;
+    });
+  }
+
+  if (btnEditorCancel && editorModal) {
+    btnEditorCancel.addEventListener('click', () => {
+      editorModal.classList.add('hidden');
+      editorModal.classList.remove('flex');
+    });
+  }
+
+  if (btnEditorSave && editorModal) {
+    btnEditorSave.addEventListener('click', async () => {
+      const title = document.getElementById('edit-title')?.value.trim();
+      const date = document.getElementById('edit-date')?.value;
+      const cost = parseFloat(document.getElementById('edit-cost')?.value) || 0;
+      const loc = document.getElementById('edit-location')?.value.trim();
+      const locUrl = document.getElementById('edit-location-url')?.value.trim();
+      const orga1 = document.getElementById('edit-orga1')?.value.trim();
+      const orga2 = document.getElementById('edit-orga2')?.value.trim();
+      const desc = document.getElementById('edit-desc')?.value.trim();
+      const mandatory = document.getElementById('edit-mandatory')?.checked || false;
+
+      if (!title || !date) { alert('Bitte Titel und Datum angeben!'); return; }
+
+      btnEditorSave.disabled = true;
+      btnEditorSave.textContent = 'Speichere...';
+
+      const { error } = await supabase.from('events').insert({
+        title, 
+        event_date: date, 
+        cost_per_person: cost, 
+        location: loc, 
+        location_url: locUrl,
+        organizer_1: orga1,
+        organizer_2: orga2,
+        description: desc,
+        mandatory_rsvp: mandatory,
+        is_published: true // Sofort veröffentlichen für jetzt
+      });
+
+      btnEditorSave.disabled = false;
+      btnEditorSave.textContent = 'Speichern & Veröffentlichen';
+
+      if (!error) {
+        editorModal.classList.add('hidden');
+        editorModal.classList.remove('flex');
+        loadHomeEvents(); // Reload events
+      } else {
+        alert('Fehler beim Speichern: ' + error.message);
+      }
+    });
+  }
+
+  // ============================================================
+  // 8. HALL OF FAME (Phase 5)
+  // ============================================================
+  async function loadHallOfFame() {
+    const hofContainer = document.getElementById('hall-of-fame');
+    if (!hofContainer) return;
+
+    // Fetch top media items (e.g. stickers or quotes from past events)
+    // For now, we manually curate via a specific event_media query or just show placeholders
+    const { data: highlights } = await supabase.from('event_media').select('*').limit(3).order('created_at', { ascending: false });
+
+    if (!highlights || highlights.length === 0) return;
+
+    // Simple display logic for HOF
+    // hofContainer.innerHTML = ... (to be expanded)
+  }
+
+  // Load HOF on boot
+  loadHallOfFame();
+
+  // ============================================================
+  // 9. INITIAL BOOT & UI GLUE
   // ============================================================
   checkAuth();
 
-  // ============================================================
-  // 6. UI: NAVIGATION & TABS
-  // ============================================================
   document.querySelectorAll('.nav-item').forEach(btn => {
     btn.addEventListener('click', () => {
       const target = btn.getAttribute('data-target');
@@ -868,7 +996,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Theme support
   document.querySelectorAll('.theme-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const theme = btn.getAttribute('data-theme');
@@ -879,4 +1006,5 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
 });
+
 
