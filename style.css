@@ -1,8 +1,241 @@
-@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400..700&family=Permanent+Marker&family=Schoolbell&display=swap');
+/* ============================================================
+   DESIGN TOKENS — Tactile & Playful
+   ============================================================ */
+:root {
+  --bg:        #2b1d0e;
+  --accent:    #e8a838;
+  --accent2:   #8b5e3c;
+  --surface:   #3d2b1a;
+  --text:      #ffffff;
+  --text-muted:#d2b48c;
+  --border:    rgba(255,255,255,0.1);
+  --craft-shadow: 6px 8px 0px rgba(0,0,0,0.3);
+  --wobbly-radius: 20px 40px 15px 35px / 35px 15px 40px 20px;
+}
+
+/* Texture Overlays */
+.texture-paper {
+  background-image: url('https://www.transparenttextures.com/patterns/natural-paper.png');
+}
+
+.texture-cardboard {
+  background-image: url('https://www.transparenttextures.com/patterns/cardboard.png');
+}
+
+/* ================= :root Theme Overrides ================= */
+body.theme-cardboard { --bg: #2b1d0e; --accent: #e8a838; --accent2: #8b5e3c; --surface: #3d2b1a; }
+body.theme-notebook  { --bg: #0d1b2a; --accent: #00b4d8; --accent2: #1b4965; --surface: #1b2838; }
+body.theme-grunge    { --bg: #1a0a0a; --accent: #ff2d55; --accent2: #6b1212; --surface: #2d0f0f; }
+body.theme-piggy     { --bg: #2d0a1e; --accent: #ff69b4; --accent2: #c71585; --surface: #3d1030; }
 
 /* ============================================================
-   DESIGN TOKENS
+   BASE & MOBILE FIRST
    ============================================================ */
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: 'Schoolbell', cursive;
+  background-color: var(--bg);
+  background-image: url('https://www.transparenttextures.com/patterns/black-paper.png');
+  color: var(--text);
+  overscroll-behavior: none;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: background-color 0.4s ease;
+  overflow: hidden;
+}
+
+/* ============================================================
+   TACTILE CARDS & SHAPES
+   ============================================================ */
+.glass-card {
+  background: rgba(255, 255, 255, 0.08);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: var(--wobbly-radius);
+  box-shadow: var(--craft-shadow);
+  transform: rotate(-0.5deg);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.glass-card:nth-child(even) { transform: rotate(0.8deg); }
+.glass-card:active { transform: scale(0.98) rotate(0deg); box-shadow: 2px 3px 0px rgba(0,0,0,0.5); }
+
+/* Badge / Sticker Style */
+.badge-sticker {
+  display: inline-block;
+  padding: 4px 12px;
+  background: white;
+  color: #333;
+  font-family: 'Permanent Marker', cursive;
+  font-size: 10px;
+  text-transform: uppercase;
+  border-radius: 4px;
+  box-shadow: 2px 2px 0px rgba(0,0,0,0.2);
+  border: 1px solid #ddd;
+  transform: rotate(-3deg);
+}
+
+/* ============================================================
+   EVENT HERO (Tactile)
+   ============================================================ */
+#next-event-hero {
+  border-radius: 12px 60px 15px 45px / 15px 12px 50px 18px;
+  transform: rotate(-1deg);
+  box-shadow: 8px 10px 0px rgba(0,0,0,0.4);
+}
+
+/* ============================================================
+   MODALS (Bottom Sheet for Mobile)
+   ============================================================ */
+#event-modal {
+  align-items: flex-end;
+  transition: background-color 0.3s;
+}
+
+#event-modal-content {
+  border-radius: 40px 40px 0 0;
+  transform: translateY(100%);
+  transition: transform 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+  box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+  border-top: 4px solid var(--accent);
+}
+
+#event-modal.flex #event-modal-content {
+  transform: translateY(0);
+}
+
+/* Tabs in Modal */
+.event-tab-btn {
+  font-family: 'Permanent Marker', cursive;
+  position: relative;
+  transition: color 0.2s;
+}
+
+.event-tab-btn.active-tab {
+  color: var(--accent) !important;
+}
+
+.event-tab-btn.active-tab::after {
+  content: '';
+  position: absolute;
+  bottom: 0px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 30px;
+  height: 4px;
+  background: var(--accent);
+  border-radius: 2px;
+}
+
+/* ============================================================
+   NAVIGATION (Tactile Felt Bar)
+   ============================================================ */
+.nav-felt {
+  background: var(--surface);
+  border-top: 3px solid rgba(0,0,0,0.3);
+  box-shadow: 0 -4px 10px rgba(0,0,0,0.5);
+  height: 4.5rem;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.nav-item {
+  position: relative;
+  top: 0;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.nav-item.active {
+  transform: translateY(-12px) scale(1.1) rotate(-3deg);
+  color: var(--accent);
+}
+
+.nav-item.active::before {
+  content: '📍';
+  position: absolute;
+  top: -10px;
+  font-size: 1rem;
+  opacity: 0.8;
+}
+
+/* ============================================================
+   PROFIL & AVATAR
+   ============================================================ */
+.avatar-cutout {
+  width: 130px;
+  height: 130px;
+  border: 4px solid white;
+  border-radius: 15px 45px 20px 40px / 40px 20px 45px 15px;
+  box-shadow: 6px 8px 0px rgba(0,0,0,0.4);
+  background-color: #eee;
+  overflow: hidden;
+  position: relative;
+}
+
+.avatar-cutout::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url('https://www.transparenttextures.com/patterns/felt.png');
+  pointer-events: none;
+  opacity: 0.2;
+}
+
+/* ============================================================
+   BUZZER (LBP Style)
+   ============================================================ */
+.buzzer-base {
+  background: #333;
+  padding: 15px;
+  border-radius: var(--wobbly-radius);
+  box-shadow: inset 0 4px 10px rgba(0,0,0,0.5), 4px 6px 0px rgba(0,0,0,0.3);
+}
+
+.buzzer-btn {
+  background: radial-gradient(circle at 35% 35%, var(--accent) 0%, #a02030 100%);
+  border-radius: 50%;
+  box-shadow: 
+    0px 10px 0px #70101a,
+    0px 15px 20px rgba(0,0,0,0.6);
+  transition: all 0.1s;
+}
+
+.buzzer-btn:active {
+  transform: translateY(8px);
+  box-shadow: 
+    0px 2px 0px #70101a,
+    0px 5px 10px rgba(0,0,0,0.4);
+}
+
+/* ============================================================
+   FONTS
+   ============================================================ */
+.font-marker { font-family: 'Permanent Marker', cursive; }
+.font-hand   { font-family: 'Caveat', cursive; }
+.font-sans   { font-family: ui-sans-serif, system-ui, sans-serif; }
+
+/* ============================================================
+   ANIMATIONS
+   ============================================================ */
+@keyframes stickerAppear {
+  0% { transform: scale(0) rotate(20deg); opacity: 0; }
+  70% { transform: scale(1.1) rotate(-5deg); opacity: 1; }
+  100% { transform: scale(1) rotate(-3deg); }
+}
+
+.animate-sticker {
+  animation: stickerAppear 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+/* Utility for mobile thumb reach */
+.mobile-touch-target {
+  min-height: 48px;
+  min-width: 48px;
+}
+
 :root {
   --bg:        #1a1a2e;
   --accent:    #e94560;

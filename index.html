@@ -188,12 +188,20 @@
         <div class="glass-card rounded-xl p-5 flex items-center justify-center">
           <span class="text-white/40 font-sans text-sm">Lade Events...</span>
         </div>
+      <!-- Hall of Fame -->
+      <h2 class="font-marker text-xl text-white/80 mb-3 mt-6">🏆 Hall of Fame</h2>
+      <div id="hall-of-fame" class="flex flex-col gap-3 pb-8">
+        <div class="glass-card rounded-xl p-5 text-center relative overflow-hidden">
+          <div class="absolute -right-4 -top-4 text-4xl opacity-20">⭐</div>
+          <p class="font-sans text-xs text-white/40 italic">Coming soon... Best of Sticker, Quotes & Momente.</p>
+        </div>
       </div>
 
     </section>
 
     <!-- ================================================
          VIEW: PING
+
          ================================================ -->
     <section id="view-smoker" class="view-panel">
       <h1 class="text-4xl font-marker text-center mt-4 mb-2 text-white">Treffe</h1>
@@ -255,24 +263,36 @@
         <span id="profile-role-badge" class="font-sans text-[10px] font-bold uppercase tracking-widest px-3 py-0.5 rounded-full" style="background: var(--accent); color: white;">Member</span>
       </div>
 
-      <!-- Stats -->
-      <div class="glass-card rounded-xl p-4 max-w-sm mx-auto w-full mb-4">
-        <h3 class="font-marker text-white text-lg mb-3">Deine Stats</h3>
-        <div class="grid grid-cols-3 gap-3">
+      <!-- Badge & Stats Showcase -->
+      <div class="glass-card rounded-2xl p-5 max-w-sm mx-auto w-full mb-6 relative overflow-hidden">
+        <div class="absolute -right-4 -top-4 w-20 h-20 rounded-full opacity-20 bg-white rotate-12"></div>
+        <h3 class="font-marker text-white text-xl mb-4 flex items-center gap-2">
+          <span>🏅</span> Badges & Stats
+        </h3>
+        
+        <!-- Stickers/Badges Grid -->
+        <div class="flex flex-wrap gap-4 justify-center mb-6">
+          <div class="badge-sticker animate-sticker" style="background-image: url('assets/badge-beerpong.png'); background-size: cover; width: 60px; height: 60px; border-radius: 50%; border: 4px solid white;"></div>
+          <div class="badge-sticker animate-sticker" style="background-image: url('assets/badge-vino.png'); background-size: cover; width: 60px; height: 60px; border-radius: 50%; border: 4px solid white; animation-delay: 0.1s; transform: rotate(5deg);"></div>
+          <div class="w-14 h-14 rounded-full border-4 border-dashed border-white/20 flex items-center justify-center text-white/20 text-xs font-marker rotate-12">?</div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2 border-t border-white/10 pt-4">
           <div class="text-center">
-            <div id="stat-events" class="font-marker text-2xl" style="color: var(--accent);">—</div>
-            <div class="text-[10px] text-white/50 font-sans">Events</div>
+            <div id="stat-events" class="font-marker text-2xl" style="color: var(--accent);">0</div>
+            <div class="text-[9px] text-white/40 font-sans uppercase tracking-widest font-bold">Events</div>
           </div>
           <div class="text-center">
-            <div id="stat-badges" class="font-marker text-2xl text-yellow-400">—</div>
-            <div class="text-[10px] text-white/50 font-sans">Badges</div>
+            <div id="stat-badges" class="font-marker text-2xl text-yellow-400">2</div>
+            <div class="text-[9px] text-white/40 font-sans uppercase tracking-widest font-bold">Sticker</div>
           </div>
           <div class="text-center">
-            <div id="stat-organized" class="font-marker text-2xl text-blue-400">—</div>
-            <div class="text-[10px] text-white/50 font-sans">Organisiert</div>
+            <div id="stat-organized" class="font-marker text-2xl text-blue-400">0</div>
+            <div class="text-[9px] text-white/40 font-sans uppercase tracking-widest font-bold">Orga</div>
           </div>
         </div>
       </div>
+
 
       <!-- Signature Sound -->
       <div class="glass-card rounded-xl p-4 max-w-sm mx-auto w-full mb-4">
@@ -301,12 +321,32 @@
 
       <!-- Admin Panel -->
       <div id="admin-panel" class="glass-card rounded-xl p-4 max-w-sm mx-auto w-full mb-4 hidden" style="border: 1px solid rgba(239,68,68,0.3);">
-        <h3 class="font-marker text-red-400 text-xl mb-1">⚡ Admin</h3>
-        <p class="text-xs text-white/50 font-sans mb-3">Ausstehende Freischaltungen</p>
-        <div id="admin-pending-list" class="flex flex-col gap-2 font-sans text-sm"></div>
+        <h3 class="font-marker text-red-400 text-xl mb-1">⚡ Admin Dashboard</h3>
+        <p class="text-xs text-white/50 font-sans mb-4">Verwaltung & Freischaltungen</p>
+        
+        <button id="btn-open-event-editor" class="w-full py-3 rounded-xl font-sans text-sm font-bold text-white mb-4 transition-transform active:scale-95" style="background: var(--accent);">
+          ➕ Neues Event erstellen
+        </button>
+
+        <div class="border-t border-white/10 pt-4">
+          <p class="text-[10px] text-white/40 font-sans uppercase tracking-widest font-bold mb-2">Ausstehende Freischaltungen</p>
+          <div id="admin-pending-list" class="flex flex-col gap-2 font-sans text-sm"></div>
+        </div>
+      </div>
+
+      <!-- Ideas Dropbox (Anonymous) -->
+      <div class="glass-card rounded-2xl p-5 max-w-sm mx-auto w-full mb-6 relative overflow-hidden" style="background: rgba(139, 92, 246, 0.1); border-color: rgba(139, 92, 246, 0.2);">
+        <h3 class="font-marker text-white text-xl mb-2 flex items-center gap-2">
+          <span>💡</span> Ideen-Dropbox
+        </h3>
+        <p class="font-sans text-xs text-white/50 mb-4 italic">Anonyme Vorschläge für zukünftige Events oder Features.</p>
+        <textarea id="idea-input" rows="3" placeholder="Was sollten wir mal machen?..." class="w-full bg-white/5 border border-white/20 rounded-xl p-3 text-white font-sans text-sm outline-none resize-none mb-3"></textarea>
+        <button id="btn-submit-idea" class="w-full py-2.5 rounded-xl font-sans text-sm font-bold text-white transition-all active:scale-95" style="background: #8b5cf6;">Vorschlag abschicken</button>
+        <p id="idea-status" class="text-[10px] text-center text-white/40 font-sans mt-2"></p>
       </div>
 
       <!-- Theme Selector -->
+
       <div class="glass-card rounded-xl p-4 max-w-sm mx-auto w-full mb-4">
         <h3 class="font-marker text-white text-xl text-center mb-3">Vibe wählen</h3>
         <div class="theme-selector-container pb-2">
@@ -360,15 +400,67 @@
   </div>
 
   <!-- ================================================
-       EVENT DETAIL MODAL
+       EVENT EDITOR MODAL (Organizers)
        ================================================ -->
-  <div id="event-modal" class="fixed inset-0 bg-black/80 z-[100] hidden flex-col items-center justify-end p-0">
-    <div id="event-modal-content" class="w-full max-w-lg rounded-t-3xl overflow-y-auto max-h-[93vh] relative shadow-2xl" style="background: var(--surface);">
+  <div id="editor-modal" class="fixed inset-0 bg-black/80 z-[110] hidden flex-col items-center justify-center p-4 backdrop-blur-sm">
+    <div id="editor-modal-content" class="w-full max-w-lg rounded-3xl overflow-y-auto max-h-[90vh] relative shadow-2xl glass-card p-6" style="background: var(--surface);">
+      <h2 class="font-marker text-2xl text-white mb-4">Event Editor 🛠️</h2>
+      
+      <div class="flex flex-col gap-4">
+        <div>
+          <label class="block font-sans text-[10px] text-white/40 uppercase tracking-widest font-bold mb-1">Titel</label>
+          <input type="text" id="edit-title" placeholder="Event Name (z.B. Beerpong Bash)" class="w-full bg-white/5 border border-white/20 rounded-xl p-3 text-white font-sans text-sm outline-none">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-sans text-[10px] text-white/40 uppercase tracking-widest font-bold mb-1">Datum</label>
+            <input type="date" id="edit-date" class="w-full bg-white/5 border border-white/20 rounded-xl p-3 text-white font-sans text-sm outline-none">
+          </div>
+          <div>
+            <label class="block font-sans text-[10px] text-white/40 uppercase tracking-widest font-bold mb-1">Kosten (CHF)</label>
+            <input type="number" id="edit-cost" placeholder="0" class="w-full bg-white/5 border border-white/20 rounded-xl p-3 text-white font-sans text-sm outline-none">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-sans text-[10px] text-white/40 uppercase tracking-widest font-bold mb-1">Location</label>
+          <input type="text" id="edit-location" placeholder="Wo findet es statt?" class="w-full bg-white/5 border border-white/20 rounded-xl p-3 text-white font-sans text-sm outline-none mb-1">
+          <input type="text" id="edit-location-url" placeholder="Google Maps Link (optional)" class="w-full bg-white/5 border border-white/20 rounded-xl p-3 text-white font-sans text-xs outline-none">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-sans text-[10px] text-white/40 uppercase tracking-widest font-bold mb-1">Orga 1</label>
+            <input type="text" id="edit-orga1" placeholder="Name..." class="w-full bg-white/5 border border-white/20 rounded-xl p-3 text-white font-sans text-sm outline-none">
+          </div>
+          <div>
+            <label class="block font-sans text-[10px] text-white/40 uppercase tracking-widest font-bold mb-1">Orga 2</label>
+            <input type="text" id="edit-orga2" placeholder="Name..." class="w-full bg-white/5 border border-white/20 rounded-xl p-3 text-white font-sans text-sm outline-none">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-sans text-[10px] text-white/40 uppercase tracking-widest font-bold mb-1">Beschreibung</label>
+          <textarea id="edit-desc" rows="3" placeholder="Was ist geplant?" class="w-full bg-white/5 border border-white/20 rounded-xl p-3 text-white font-sans text-sm outline-none resize-none"></textarea>
+        </div>
+
+        <div class="flex items-center gap-3 bg-white/5 p-3 rounded-xl border border-white/10">
+          <input type="checkbox" id="edit-mandatory" class="w-5 h-5 rounded">
+          <label for="edit-mandatory" class="font-sans text-sm text-white/80">Verpflichtende Anmeldung info</label>
+        </div>
+
+        <div class="flex gap-3 mt-4">
+          <button id="btn-editor-cancel" class="flex-1 py-3 rounded-xl font-sans text-sm font-bold text-white/50 border border-white/10 hover:bg-white/5 transition-all">Abbrechen</button>
+          <button id="btn-editor-save" class="flex-[2] py-3 rounded-xl font-sans text-sm font-bold text-white transition-transform active:scale-95" style="background: var(--accent);">Speichern & Veröffentlichen</button>
+        </div>
+      </div>
     </div>
   </div>
 
   <!-- ================================================
        BOTTOM NAVIGATION
+
        ================================================ -->
   <nav class="nav-felt hidden">
     <button class="nav-item active" data-target="view-home">

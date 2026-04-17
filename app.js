@@ -338,39 +338,54 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!modal || !content) return;
 
     const d = ev.event_date ? new Date(ev.event_date).toLocaleDateString('de-CH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '—';
+    const isOrganizer = activeUser && (activeUser.is_admin || activeUser.role === 'admin' ||
+      activeUser.name === ev.organizer_1 || activeUser.name === ev.organizer_2);
+    const hasTournament = !!ev.tournament_type;
 
     content.innerHTML = `
-      <div class="p-6 pb-4 relative" style="background: linear-gradient(135deg, var(--accent2), var(--accent));">
+      <!-- Header -->
+      <div class="p-6 pb-4 relative overflow-hidden" style="background: linear-gradient(135deg, var(--accent2), var(--accent));">
+        <div class="absolute -right-6 -top-6 w-28 h-28 rounded-full opacity-20 bg-white"></div>
         <button id="close-event-modal" class="absolute top-4 right-4 text-white/70 hover:text-white text-3xl leading-none">&times;</button>
-        <h2 class="font-marker text-3xl text-white mb-1">${ev.title}</h2>
+        <h2 class="font-marker text-3xl text-white mb-1 pr-8">${ev.title}</h2>
         <p class="font-sans text-sm text-white/70">${d}</p>
+        ${ev.location_url ? `<a href="${ev.location_url}" target="_blank" class="inline-flex items-center gap-1 mt-2 text-white/80 text-xs font-sans bg-white/20 px-3 py-1 rounded-full">📍 ${ev.location} ↗</a>` : `<p class="font-sans text-xs text-white/60 mt-1">📍 ${ev.location || '—'}</p>`}
       </div>
-      <div class="p-6" style="background: var(--surface);">
-        <div class="grid grid-cols-2 gap-3 mb-4">
-          <div class="glass-card rounded-xl p-3">
-            <div class="text-xs text-white/50 font-sans mb-1">Ort</div>
-            <div class="font-sans text-sm text-white font-bold">${ev.location || '—'}</div>
-          </div>
-          <div class="glass-card rounded-xl p-3">
-            <div class="text-xs text-white/50 font-sans mb-1">Kosten</div>
-            <div class="font-marker text-xl" style="color: var(--accent);">${ev.cost_per_person || '—'} CHF</div>
-          </div>
-          <div class="glass-card rounded-xl p-3 col-span-2">
-            <div class="text-xs text-white/50 font-sans mb-1">Organisatoren</div>
-            <div class="font-sans text-sm text-white font-bold">${ev.organizer_1 || '?'} & ${ev.organizer_2 || '?'}</div>
-          </div>
-        </div>
-        ${ev.description ? `<p class="font-sans text-sm text-white/70 mb-4 leading-relaxed">${ev.description}</p>` : ''}
-        <div class="flex gap-3">
-          <button id="modal-rsvp-yes" class="flex-1 py-3 rounded-xl font-sans font-bold text-white" style="background: rgba(74,222,128,0.2); border: 1px solid rgba(74,222,128,0.4);">👍 Ich bin dabei</button>
-          <button id="modal-rsvp-no" class="flex-1 py-3 rounded-xl font-sans font-bold text-white" style="background: rgba(248,113,113,0.2); border: 1px solid rgba(248,113,113,0.4);">👎 Nö</button>
-        </div>
+
+      <!-- Tabs -->
+      <div class="flex border-b" style="background: var(--surface); border-color: rgba(255,255,255,0.1);">
+        <button class="event-tab-btn flex-1 py-3 text-xs font-sans font-bold uppercase tracking-wider text-white border-b-2 active-tab" data-tab="info" style="border-color: var(--accent);">Info</button>
+        <button class="event-tab-btn flex-1 py-3 text-xs font-sans font-bold uppercase tracking-wider text-white/50 border-b-2 border-transparent" data-tab="batzen">Batzen</button>
+        ${hasTournament ? `<button class="event-tab-btn flex-1 py-3 text-xs font-sans font-bold uppercase tracking-wider text-white/50 border-b-2 border-transparent" data-tab="turnier">Turnier</button>` : ''}
+        <button class="event-tab-btn flex-1 py-3 text-xs font-sans font-bold uppercase tracking-wider text-white/50 border-b-2 border-transparent" data-tab="media">Medien</button>
+      </div>
+
+      <!-- Tab Content -->
+      <div id="event-tab-content" class="p-5" style="background: var(--surface);">
+        <div class="text-center py-8 text-white/40 font-sans text-sm">Lade...</div>
       </div>
     `;
 
     modal.classList.remove('hidden');
     modal.classList.add('flex');
 
+    // Tab switching
+    const tabBtns = content.querySelectorAll('.event-tab-btn');
+    tabBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        tabBtns.forEach(b => {
+          b.classList.remove('active-tab', 'text-white');
+          b.classList.add('text-white/50');
+          b.style.borderColor = 'transparent';
+        });
+        btn.classList.add('active-tab', 'text-white');
+        btn.classList.remove('text-white/50');
+        btn.style.borderColor = 'var(--accent)';
+        loadEventTab(btn.getAttribute('data-tab'), ev, isOrganizer);
+      });
+    });
+
+    // Close
     document.getElementById('close-event-modal')?.addEventListener('click', () => {
       modal.classList.add('hidden'); modal.classList.remove('flex');
     });
@@ -378,435 +393,490 @@ document.addEventListener('DOMContentLoaded', () => {
       if (e.target === modal) { modal.classList.add('hidden'); modal.classList.remove('flex'); }
     });
 
-    if (activeUser && ev.id && ev.id !== 'placeholder') {
-      const doRsvp = async (status) => {
-        await supabase.from('event_rsvp').upsert(
-          { event_id: ev.id, user_name: activeUser.name, status },
-          { onConflict: 'event_id,user_name' }
-        );
-        modal.classList.add('hidden'); modal.classList.remove('flex');
-        loadHomeEvents();
-      };
-      document.getElementById('modal-rsvp-yes')?.addEventListener('click', () => doRsvp('yes'));
-      document.getElementById('modal-rsvp-no')?.addEventListener('click', () => doRsvp('no'));
-    }
+    // Load default tab
+    loadEventTab('info', ev, isOrganizer);
   }
 
   // ============================================================
-  // 4. INITIAL BOOT
+  // EVENT TABS
+  // ============================================================
+  async function loadEventTab(tab, ev, isOrganizer) {
+    const container = document.getElementById('event-tab-content');
+    if (!container) return;
+
+    if (tab === 'info') await loadInfoTab(container, ev, isOrganizer);
+    else if (tab === 'batzen') await loadBatzenTab(container, ev, isOrganizer);
+    else if (tab === 'turnier') await loadTurnierTab(container, ev, isOrganizer);
+    else if (tab === 'media') await loadMediaTab(container, ev, isOrganizer);
+  }
+
+  // --- TAB 1: INFO & RSVP ---
+  async function loadInfoTab(container, ev, isOrganizer) {
+    const myName = activeUser?.name || '';
+    let myRsvp = null;
+    let rsvpList = { yes: [], no: [], pending: [] };
+
+    if (ev.id && ev.id !== 'placeholder') {
+      const { data: rsvps } = await supabase.from('event_rsvp').select('*').eq('event_id', ev.id);
+      (rsvps || []).forEach(r => {
+        if (r.user_name === myName) myRsvp = r;
+        (rsvpList[r.status] || (rsvpList[r.status] = [])).push(r);
+      });
+    }
+
+    const deadline = ev.rsvp_deadline ? new Date(ev.rsvp_deadline) : null;
+    const isDeadlinePast = deadline && deadline < new Date();
+    const deadlineStr = deadline ? deadline.toLocaleDateString('de-CH', { day: 'numeric', month: 'short' }) : '—';
+
+    container.innerHTML = `
+      <!-- Info Grid -->
+      <div class="grid grid-cols-2 gap-3 mb-5">
+        <div class="glass-card rounded-xl p-3">
+          <div class="text-[10px] text-white/40 font-sans mb-1 uppercase tracking-wider">Kosten</div>
+          <div class="font-marker text-2xl" style="color: var(--accent);">${ev.cost_per_person || '?'} CHF</div>
+        </div>
+        <div class="glass-card rounded-xl p-3">
+          <div class="text-[10px] text-white/40 font-sans mb-1 uppercase tracking-wider">Deadline</div>
+          <div class="font-sans text-sm text-white font-bold">${deadlineStr}</div>
+          ${isDeadlinePast ? '<div class="text-[10px] text-red-400">Geschlossen</div>' : '<div class="text-[10px] text-green-400">Offen</div>'}
+        </div>
+        <div class="glass-card rounded-xl p-3 col-span-2">
+          <div class="text-[10px] text-white/40 font-sans mb-1 uppercase tracking-wider">Organisatoren</div>
+          <div class="font-sans text-sm text-white font-bold">👥 ${ev.organizer_1 || '?'} & ${ev.organizer_2 || '?'}</div>
+        </div>
+        ${ev.description ? `<div class="glass-card rounded-xl p-3 col-span-2"><p class="font-sans text-sm text-white/70 leading-relaxed">${ev.description}</p></div>` : ''}
+      </div>
+
+      <!-- RSVP Section -->
+      <h3 class="font-marker text-lg text-white mb-3">Abstimmung</h3>
+      <div class="flex gap-2 mb-3 text-center text-xs font-sans text-white/60">
+        <div class="flex-1 glass-card rounded-xl py-2"><div class="font-marker text-xl text-green-400">${(rsvpList.yes||[]).length}</div>Dabei</div>
+        <div class="flex-1 glass-card rounded-xl py-2"><div class="font-marker text-xl text-red-400">${(rsvpList.no||[]).length}</div>Nö</div>
+        <div class="flex-1 glass-card rounded-xl py-2"><div class="font-marker text-xl text-yellow-400">${(rsvpList.pending||[]).length}</div>Offen</div>
+      </div>
+
+      ${!isDeadlinePast && ev.id !== 'placeholder' ? `
+      <!-- My RSVP -->
+      <div class="glass-card rounded-xl p-4 mb-4">
+        <div class="text-xs text-white/50 font-sans mb-3 uppercase tracking-wider">Deine Antwort</div>
+        <div class="flex gap-2 mb-3">
+          <button id="rsvp-btn-yes" class="flex-1 py-3 rounded-xl font-sans text-sm font-bold text-white transition-all ${myRsvp?.status === 'yes' ? 'ring-2 ring-green-400' : ''}" style="background: rgba(74,222,128,0.2); border: 1px solid rgba(74,222,128,0.3);">👍 Bin dabei</button>
+          <button id="rsvp-btn-no" class="flex-1 py-3 rounded-xl font-sans text-sm font-bold text-white transition-all ${myRsvp?.status === 'no' ? 'ring-2 ring-red-400' : ''}" style="background: rgba(248,113,113,0.2); border: 1px solid rgba(248,113,113,0.3);">👎 Nö</button>
+        </div>
+        <!-- +1 Option -->
+        <div class="flex items-center gap-3 mb-2">
+          <label class="flex items-center gap-2 font-sans text-sm text-white cursor-pointer">
+            <input type="checkbox" id="rsvp-plus-one" class="rounded" ${myRsvp?.plus_one ? 'checked' : ''}> 
+            Ich bringe eine +1 mit
+          </label>
+        </div>
+        <div id="plus-one-name-wrap" class="${myRsvp?.plus_one ? '' : 'hidden'}">
+          <input type="text" id="rsvp-plus-one-name" placeholder="Name der +1..." value="${myRsvp?.plus_one_name || ''}"
+            class="w-full bg-white/5 border border-white/20 rounded-lg p-2 text-white font-sans text-sm outline-none mb-2">
+        </div>
+        <input type="text" id="rsvp-info" placeholder="Zusatzinfo (z.B. Allergien, Anmerkungen)..." value="${myRsvp?.additional_info || ''}"
+          class="w-full bg-white/5 border border-white/20 rounded-lg p-2 text-white font-sans text-sm outline-none">
+      </div>
+      ` : '<div class="text-center text-white/40 font-sans text-xs py-2 mb-4">Abstimmung geschlossen.</div>'}
+
+      <!-- Who's Coming -->
+      ${(rsvpList.yes||[]).length > 0 ? `
+      <div class="glass-card rounded-xl p-4 mb-4">
+        <div class="text-xs text-white/50 font-sans mb-2 uppercase tracking-wider">Wer ist dabei?</div>
+        <div class="flex flex-wrap gap-2">
+          ${(rsvpList.yes||[]).map(r => `
+            <div class="font-sans text-xs bg-green-500/20 text-green-300 px-3 py-1 rounded-full border border-green-500/30">
+              ${r.user_name}${r.plus_one ? ` +1${r.plus_one_name ? ' (' + r.plus_one_name + ')' : ''}` : ''}
+            </div>`).join('')}
+        </div>
+      </div>` : ''}
+
+      <!-- Event Rating (post-event) -->
+      <div class="glass-card rounded-xl p-4">
+        <div class="text-xs text-white/50 font-sans mb-2 uppercase tracking-wider">Event bewerten (anonym)</div>
+        <div class="flex gap-2 justify-center" id="rating-stars">
+          ${[1,2,3,4,5].map(i => `<button class="star-btn text-3xl hover:scale-110 transition-transform" data-rating="${i}">⭐</button>`).join('')}
+        </div>
+        <p id="rating-msg" class="text-center text-xs text-white/40 font-sans mt-2">Dein Rating bleibt anonym</p>
+      </div>
+    `;
+
+    // RSVP button logic
+    if (ev.id && ev.id !== 'placeholder') {
+      const plusOneCheckbox = document.getElementById('rsvp-plus-one');
+      const plusOneWrap = document.getElementById('plus-one-name-wrap');
+      if (plusOneCheckbox) {
+        plusOneCheckbox.addEventListener('change', () => {
+          plusOneWrap?.classList.toggle('hidden', !plusOneCheckbox.checked);
+        });
+      }
+
+      const doRsvp = async (status) => {
+        const plusOne = document.getElementById('rsvp-plus-one')?.checked || false;
+        const plusOneName = document.getElementById('rsvp-plus-one-name')?.value?.trim() || '';
+        const info = document.getElementById('rsvp-info')?.value?.trim() || '';
+        await supabase.from('event_rsvp').upsert(
+          { event_id: ev.id, user_name: activeUser.name, status, plus_one: plusOne, plus_one_name: plusOneName, additional_info: info },
+          { onConflict: 'event_id,user_name' }
+        );
+        loadHomeEvents();
+        await loadInfoTab(container, ev, isOrganizer);
+      };
+
+      document.getElementById('rsvp-btn-yes')?.addEventListener('click', () => doRsvp('yes'));
+      document.getElementById('rsvp-btn-no')?.addEventListener('click', () => doRsvp('no'));
+    }
+
+    // Star rating (anonymous)
+    if (ev.id && ev.id !== 'placeholder') {
+      document.querySelectorAll('.star-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const rating = parseInt(btn.getAttribute('data-rating'));
+          await supabase.from('event_ratings').insert({ event_id: ev.id, rating });
+          const msg = document.getElementById('rating-msg');
+          if (msg) msg.textContent = `Danke! Du hast ${rating}⭐ gegeben.`;
+          document.querySelectorAll('.star-btn').forEach((b, idx) => {
+            b.textContent = idx < rating ? '⭐' : '☆';
+          });
+        });
+      });
+    }
+  }
+
+  // --- TAB 2: BATZENKONTO ---
+  async function loadBatzenTab(container, ev, isOrganizer) {
+    let entries = [];
+    if (ev.id && ev.id !== 'placeholder') {
+      const { data } = await supabase.from('batzen_v2').select('*').eq('event_id', ev.id);
+      entries = data || [];
+    }
+    const total = entries.reduce((s, e) => s + (e.amount || 0), 0);
+    const myEntries = entries.filter(e => e.user_name === activeUser?.name);
+
+    container.innerHTML = `
+      <h3 class="font-marker text-xl text-white mb-1">Batzenkonto 💰</h3>
+      <p class="font-sans text-xs text-white/40 mb-4">Alle Kosten und Beiträge für ${ev.title}</p>
+
+      <!-- Summary -->
+      <div class="grid grid-cols-2 gap-3 mb-4">
+        <div class="glass-card rounded-xl p-3 text-center">
+          <div class="text-[10px] text-white/40 font-sans mb-1">Total</div>
+          <div class="font-marker text-2xl ${total >= 0 ? 'text-green-400' : 'text-red-400'}">${total > 0 ? '+' : ''}${total.toFixed(0)} CHF</div>
+        </div>
+        <div class="glass-card rounded-xl p-3 text-center">
+          <div class="text-[10px] text-white/40 font-sans mb-1">Einträge</div>
+          <div class="font-marker text-2xl text-white">${entries.length}</div>
+        </div>
+      </div>
+
+      <!-- Add Entry -->
+      ${ev.id !== 'placeholder' ? `
+      <div class="glass-card rounded-xl p-4 mb-4">
+        <div class="text-xs text-white/50 font-sans mb-2 uppercase tracking-wider">Eintrag hinzufügen</div>
+        <div class="flex gap-2 mb-2">
+          <select id="batzen-sign" class="bg-white/10 text-white font-sans p-2 rounded-lg border border-white/20 outline-none text-lg">
+            <option value="1" class="text-black">➕</option>
+            <option value="-1" class="text-black">➖</option>
+          </select>
+          <input type="number" id="batzen-amount" placeholder="Betrag CHF" class="flex-1 bg-white/5 border border-white/20 rounded-lg p-2 text-white font-sans text-sm outline-none">
+        </div>
+        <input type="text" id="batzen-desc" placeholder="Beschreibung (z.B. Bier, Verpflegung...)" class="w-full bg-white/5 border border-white/20 rounded-lg p-2 text-white font-sans text-sm outline-none mb-2">
+        <button id="batzen-add-btn" class="w-full py-2 rounded-xl font-sans text-sm font-bold text-white transition-all" style="background: var(--accent);">Eintragen</button>
+      </div>` : ''}
+
+      <!-- Receipt upload (organizers only) -->
+      ${isOrganizer ? `
+      <div class="glass-card rounded-xl p-4 mb-4" style="border-color: rgba(var(--accent), 0.3);">
+        <div class="text-xs font-sans mb-2 uppercase tracking-wider" style="color: var(--accent);">Quittung hochladen (Orga)</div>
+        <label class="flex items-center justify-center gap-2 py-3 border-2 border-dashed rounded-xl cursor-pointer hover:bg-white/5 transition" style="border-color: rgba(255,255,255,0.2);">
+          <span class="text-2xl">🧾</span>
+          <span class="font-sans text-sm text-white/60">Quittungs-Foto auswählen</span>
+          <input type="file" id="receipt-upload" accept="image/*" class="hidden">
+        </label>
+        <p id="receipt-status" class="text-xs text-center text-white/40 font-sans mt-1"></p>
+      </div>` : ''}
+
+      <!-- Entries List -->
+      <div class="flex flex-col gap-2">
+        ${entries.length ? entries.map(e => `
+          <div class="glass-card rounded-xl px-4 py-3 flex justify-between items-center">
+            <div>
+              <div class="font-sans text-sm text-white">${e.description || 'Kein Titel'}</div>
+              <div class="font-sans text-xs text-white/40">${e.user_name}</div>
+            </div>
+            <div class="font-marker text-lg ${e.amount >= 0 ? 'text-green-400' : 'text-red-400'}">${e.amount > 0 ? '+' : ''}${e.amount} CHF</div>
+          </div>`).join('') : '<div class="text-center text-white/40 font-sans text-xs py-6">Noch keine Einträge</div>'}
+      </div>
+    `;
+
+    // Add entry logic
+    document.getElementById('batzen-add-btn')?.addEventListener('click', async () => {
+      const sign = parseInt(document.getElementById('batzen-sign').value);
+      const amount = parseFloat(document.getElementById('batzen-amount').value) * sign;
+      const desc = document.getElementById('batzen-desc').value.trim();
+      if (isNaN(amount) || !desc) return;
+      await supabase.from('batzen_v2').insert({ event_id: ev.id, user_name: activeUser.name, amount, description: desc });
+      await loadBatzenTab(container, ev, isOrganizer);
+    });
+
+    // Receipt upload
+    document.getElementById('receipt-upload')?.addEventListener('change', async (e) => {
+      const file = e.target.files[0]; if (!file) return;
+      const statusEl = document.getElementById('receipt-status');
+      if (statusEl) statusEl.textContent = 'Hochladen...';
+      const path = `receipts/${ev.id}-${Date.now()}.${file.name.split('.').pop()}`;
+      await supabase.storage.from('assets').upload(path, file);
+      const { data: { publicUrl } } = supabase.storage.from('assets').getPublicUrl(path);
+      await supabase.from('event_media').insert({ event_id: ev.id, user_name: activeUser.name, type: 'receipt', content_url: publicUrl });
+      if (statusEl) statusEl.textContent = '✓ Quittung gespeichert!';
+    });
+  }
+
+  // --- TAB 3: TURNIER ---
+  async function loadTurnierTab(container, ev, isOrganizer) {
+    let matches = [];
+    if (ev.id && ev.id !== 'placeholder') {
+      const { data } = await supabase.from('tournament').select('*').eq('event_id', ev.id).order('round').order('match_number');
+      matches = data || [];
+    }
+    const rounds = [...new Set(matches.map(m => m.round))];
+
+    container.innerHTML = `
+      <h3 class="font-marker text-xl text-white mb-1">🏆 Turnier</h3>
+      <p class="font-sans text-xs text-white/40 mb-4">${ev.tournament_type || 'Turniermodus'} · ${ev.title}</p>
+
+      ${isOrganizer && matches.length === 0 ? `
+      <!-- Setup for organizers -->
+      <div class="glass-card rounded-xl p-4 mb-4" style="border: 1px solid rgba(255,255,255,0.15);">
+        <div class="text-xs font-sans mb-2 uppercase tracking-wider" style="color: var(--accent);">Turnier aufsetzen (Orga)</div>
+        <p class="font-sans text-xs text-white/50 mb-3">Spieler hinzufügen um Matches zu generieren</p>
+        <div class="flex gap-2 mb-2">
+          <input type="text" id="player-input" placeholder="Spieler Name..." class="flex-1 bg-white/5 border border-white/20 rounded-lg p-2 text-white font-sans text-sm outline-none">
+          <button id="add-player-btn" class="px-4 py-2 rounded-xl font-sans text-sm font-bold text-white" style="background: var(--accent);">+</button>
+        </div>
+        <div id="player-list" class="flex flex-wrap gap-2 mb-3 min-h-[32px]"></div>
+        <button id="generate-bracket-btn" class="w-full py-3 rounded-xl font-sans text-sm font-bold text-white" style="background: var(--accent2);">Bracket generieren 🎲</button>
+      </div>` : ''}
+
+      ${matches.length > 0 ? rounds.map(round => `
+        <div class="mb-4">
+          <div class="font-sans text-xs text-white/50 uppercase tracking-wider mb-2">Runde ${round} ${round === Math.max(...rounds) && matches.filter(m => m.round === round).length === 1 ? '🏆 Finale' : ''}</div>
+          ${matches.filter(m => m.round === round).map(m => `
+            <div class="glass-card rounded-xl p-4 mb-2">
+              <div class="flex items-center justify-between">
+                <div class="flex-1 text-center">
+                  <div class="font-marker text-lg ${m.winner === m.player_1 ? 'text-yellow-400' : 'text-white'}">${m.player_1 || '?'}</div>
+                  ${isOrganizer && !m.winner ? `<input type="number" class="score-input w-16 bg-white/10 border border-white/20 rounded text-white text-center text-sm font-sans mt-1 outline-none" data-match="${m.id}" data-player="1" value="${m.score_1 || 0}">` : `<div class="font-marker text-2xl text-white/70">${m.score_1 || 0}</div>`}
+                </div>
+                <div class="font-marker text-white/30 text-lg px-3">vs</div>
+                <div class="flex-1 text-center">
+                  <div class="font-marker text-lg ${m.winner === m.player_2 ? 'text-yellow-400' : 'text-white'}">${m.player_2 || '?'}</div>
+                  ${isOrganizer && !m.winner ? `<input type="number" class="score-input w-16 bg-white/10 border border-white/20 rounded text-white text-center text-sm font-sans mt-1 outline-none" data-match="${m.id}" data-player="2" value="${m.score_2 || 0}">` : `<div class="font-marker text-2xl text-white/70">${m.score_2 || 0}</div>`}
+                </div>
+              </div>
+              ${isOrganizer && !m.winner ? `<button class="save-score-btn w-full mt-3 py-2 rounded-lg font-sans text-xs font-bold text-white" style="background: var(--accent);" data-match="${m.id}" data-p1="${m.player_1}" data-p2="${m.player_2}">Ergebnis speichern</button>` : m.winner ? `<div class="text-center text-xs text-yellow-400 font-sans mt-2 font-bold">🏆 ${m.winner} gewinnt</div>` : ''}
+            </div>`).join('')}
+        </div>`).join('') : matches.length === 0 && !isOrganizer ? '<div class="text-center text-white/40 font-sans text-sm py-10">Das Turnier wurde noch nicht aufgesetzt.</div>' : ''}
+    `;
+
+    // Player management for bracket setup
+    let players = [];
+    const playerListEl = document.getElementById('player-list');
+
+    document.getElementById('add-player-btn')?.addEventListener('click', () => {
+      const input = document.getElementById('player-input');
+      const name = input?.value.trim();
+      if (name && !players.includes(name)) {
+        players.push(name);
+        if (playerListEl) playerListEl.innerHTML = players.map(p => `<span class="bg-white/10 text-white text-xs font-sans px-3 py-1 rounded-full">${p}</span>`).join('');
+      }
+      if (input) input.value = '';
+    });
+
+    document.getElementById('generate-bracket-btn')?.addEventListener('click', async () => {
+      if (players.length < 2) return;
+      const shuffled = players.sort(() => Math.random() - 0.5);
+      const matchesToInsert = [];
+      for (let i = 0; i < shuffled.length - 1; i += 2) {
+        matchesToInsert.push({ event_id: ev.id, round: 1, match_number: Math.floor(i/2) + 1, player_1: shuffled[i], player_2: shuffled[i+1] || 'BYE' });
+      }
+      await supabase.from('tournament').insert(matchesToInsert);
+      await loadTurnierTab(container, ev, isOrganizer);
+    });
+
+    // Save scores
+    document.querySelectorAll('.save-score-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const matchId = btn.getAttribute('data-match');
+        const p1 = btn.getAttribute('data-p1');
+        const p2 = btn.getAttribute('data-p2');
+        const s1 = parseInt(document.querySelector(`.score-input[data-match="${matchId}"][data-player="1"]`)?.value) || 0;
+        const s2 = parseInt(document.querySelector(`.score-input[data-match="${matchId}"][data-player="2"]`)?.value) || 0;
+        const winner = s1 > s2 ? p1 : p2;
+        await supabase.from('tournament').update({ score_1: s1, score_2: s2, winner }).eq('id', matchId);
+        await loadTurnierTab(container, ev, isOrganizer);
+      });
+    });
+  }
+
+  // --- TAB 4: MEDIEN (Sticker, Quote, Fotos) ---
+  async function loadMediaTab(container, ev, isOrganizer) {
+    let media = [];
+    if (ev.id && ev.id !== 'placeholder') {
+      const { data } = await supabase.from('event_media').select('*').eq('event_id', ev.id).order('created_at', { ascending: false });
+      media = data || [];
+    }
+    const stickers = media.filter(m => m.type === 'sticker');
+    const quotes = media.filter(m => m.type === 'quote');
+    const photos = media.filter(m => m.type === 'photo');
+    const receipts = media.filter(m => m.type === 'receipt');
+
+    container.innerHTML = `
+      <h3 class="font-marker text-xl text-white mb-1">Medien & Memories</h3>
+      <p class="font-sans text-xs text-white/40 mb-4">${ev.title}</p>
+
+      <!-- Upload Area -->
+      ${ev.id !== 'placeholder' ? `
+      <div class="grid grid-cols-2 gap-2 mb-5">
+        <!-- Sticker Upload -->
+        <label class="glass-card rounded-xl p-3 flex flex-col items-center gap-1 cursor-pointer hover:bg-white/10 transition text-center">
+          <span class="text-2xl">🎨</span>
+          <span class="font-sans text-xs text-white/60">Sticker hochladen</span>
+          <input type="file" id="sticker-upload-evt" accept="image/*" class="hidden">
+        </label>
+        <!-- Photo Upload -->
+        <label class="glass-card rounded-xl p-3 flex flex-col items-center gap-1 cursor-pointer hover:bg-white/10 transition text-center">
+          <span class="text-2xl">📸</span>
+          <span class="font-sans text-xs text-white/60">Foto hochladen</span>
+          <input type="file" id="photo-upload-evt" accept="image/*" class="hidden">
+        </label>
+      </div>
+
+      <!-- Quote of the Day -->
+      <div class="glass-card rounded-xl p-4 mb-4">
+        <div class="text-xs text-white/50 font-sans mb-2 uppercase tracking-wider">Quote of the Day</div>
+        <textarea id="quote-input" rows="2" placeholder='"Das war der beste Abend meines Lebens."' class="w-full bg-white/5 border border-white/20 rounded-lg p-2 text-white font-sans text-sm outline-none resize-none mb-2"></textarea>
+        <button id="quote-submit-btn" class="w-full py-2 rounded-xl font-sans text-xs font-bold text-white" style="background: var(--accent);">Quote speichern</button>
+      </div>` : ''}
+
+      <!-- Sticker of the Day -->
+      ${stickers.length > 0 ? `
+      <div class="mb-4">
+        <div class="text-xs text-white/50 font-sans mb-2 uppercase tracking-wider">🎨 Sticker of the Day</div>
+        <div class="grid grid-cols-2 gap-2">
+          ${stickers.map(s => `<div class="glass-card rounded-xl overflow-hidden aspect-square"><img src="${s.content_url}" class="w-full h-full object-cover"></div>`).join('')}
+        </div>
+      </div>` : ''}
+
+      <!-- Quotes -->
+      ${quotes.length > 0 ? `
+      <div class="mb-4">
+        <div class="text-xs text-white/50 font-sans mb-2 uppercase tracking-wider">💬 Quotes</div>
+        <div class="flex flex-col gap-2">
+          ${quotes.map(q => `<div class="glass-card rounded-xl p-4"><p class="font-hand text-xl text-white">"${q.text_content}"</p><p class="font-sans text-xs text-white/40 mt-1">— ${q.user_name}</p></div>`).join('')}
+        </div>
+      </div>` : ''}
+
+      <!-- Photos -->
+      ${photos.length > 0 ? `
+      <div class="mb-4">
+        <div class="text-xs text-white/50 font-sans mb-2 uppercase tracking-wider">📸 Fotos</div>
+        <div class="grid grid-cols-3 gap-1">
+          ${photos.map(p => `<div class="glass-card rounded-lg overflow-hidden aspect-square"><img src="${p.content_url}" class="w-full h-full object-cover"></div>`).join('')}
+        </div>
+      </div>` : ''}
+
+      ${media.length === 0 && ev.id === 'placeholder' ? '<div class="text-center text-white/40 font-sans text-sm py-10">Noch keine Medien für dieses Event.</div>' : ''}
+    `;
+
+    // Media upload handlers
+    const uploadMedia = async (file, type) => {
+      if (!file || !ev.id || ev.id === 'placeholder') return;
+      const path = `${type}s/${ev.id}-${Date.now()}.${file.name.split('.').pop()}`;
+      await supabase.storage.from('assets').upload(path, file);
+      const { data: { publicUrl } } = supabase.storage.from('assets').getPublicUrl(path);
+      await supabase.from('event_media').insert({ event_id: ev.id, user_name: activeUser?.name, type, content_url: publicUrl });
+      await loadMediaTab(container, ev, isOrganizer);
+    };
+
+    document.getElementById('sticker-upload-evt')?.addEventListener('change', e => uploadMedia(e.target.files[0], 'sticker'));
+    document.getElementById('photo-upload-evt')?.addEventListener('change', e => uploadMedia(e.target.files[0], 'photo'));
+
+    document.getElementById('quote-submit-btn')?.addEventListener('click', async () => {
+      const text = document.getElementById('quote-input')?.value.trim();
+      if (!text) return;
+      await supabase.from('event_media').insert({ event_id: ev.id, user_name: activeUser?.name, type: 'quote', text_content: text });
+      await loadMediaTab(container, ev, isOrganizer);
+    });
+  }
+
+  // ============================================================
+  // 4. PROFILE: AVATAR UPLOAD & STORAGE
+  // ============================================================
+  const avatarInput = document.getElementById('avatar-upload');
+  const profileAvatar = document.getElementById('profile-avatar');
+
+  if (avatarInput) {
+    avatarInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file || !activeUser) return;
+
+      // Show loading state locally
+      if (profileAvatar) profileAvatar.style.opacity = '0.5';
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `avatars/${activeUser.name}-${Date.now()}.${fileExt}`;
+
+      const { data, error } = await supabase.storage.from('assets').upload(fileName, file);
+
+      if (error) {
+        console.error('Upload error:', error);
+        if (profileAvatar) profileAvatar.style.opacity = '1';
+        return;
+      }
+
+      const { data: { publicUrl } } = supabase.storage.from('assets').getPublicUrl(fileName);
+
+      // Update users table
+      const { error: updateError } = await supabase.from('users').update({ avatar_url: publicUrl }).eq('name', activeUser.name);
+
+      if (!updateError) {
+        activeUser.avatar_url = publicUrl;
+        if (profileAvatar) {
+          profileAvatar.style.backgroundImage = `url('${publicUrl}')`;
+          profileAvatar.style.opacity = '1';
+        }
+      }
+    });
+  }
+
+  // ============================================================
+  // 5. INITIAL BOOT
   // ============================================================
   checkAuth();
 
   // ============================================================
-  // 5. LOGIN SCREEN: TABS
+  // 6. UI: NAVIGATION & TABS
   // ============================================================
-  const tabLogin = document.getElementById('tab-login');
-  const tabSignup = document.getElementById('tab-signup');
-  const secLogin = document.getElementById('section-login');
-  const secSignup = document.getElementById('section-signup');
-
-  if (tabLogin && tabSignup) {
-    tabLogin.addEventListener('click', () => {
-      secLogin.classList.remove('hidden'); secLogin.classList.add('block');
-      secSignup.classList.add('hidden'); secSignup.classList.remove('block');
-      tabLogin.classList.add('text-white', 'border-orange-500', 'font-bold');
-      tabLogin.classList.remove('text-white/50', 'border-transparent');
-      tabSignup.classList.remove('text-white', 'border-orange-500', 'font-bold');
-      tabSignup.classList.add('text-white/50', 'border-transparent');
-    });
-    tabSignup.addEventListener('click', () => {
-      secSignup.classList.remove('hidden'); secSignup.classList.add('block');
-      secLogin.classList.add('hidden'); secLogin.classList.remove('block');
-      tabSignup.classList.add('text-white', 'border-orange-500', 'font-bold');
-      tabSignup.classList.remove('text-white/50', 'border-transparent');
-      tabLogin.classList.remove('text-white', 'border-orange-500', 'font-bold');
-      tabLogin.classList.add('text-white/50', 'border-transparent');
-    });
-  }
-
-  // ============================================================
-  // 6. SIGNUP LOGIC
-  // ============================================================
-  const signupBtns = document.querySelectorAll('.signup-btn');
-  const signupNameInput = document.getElementById('signup-name');
-  const btnSubmitSignup = document.getElementById('btn-submit-signup');
-  const signupMsg = document.getElementById('signup-msg');
-
-  signupBtns.forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const colId = e.target.closest('.signup-col').getAttribute('data-col');
-      document.querySelectorAll(`.signup-col[data-col="${colId}"] .signup-btn`).forEach(b => delete b.dataset.active);
-      e.target.dataset.active = "true";
-      signupSecret[colId] = e.target.getAttribute('data-val');
+  document.querySelectorAll('.nav-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = btn.getAttribute('data-target');
+      document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
+      document.getElementById(target)?.classList.add('active');
+      document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
     });
   });
 
-  if (btnSubmitSignup) {
-    btnSubmitSignup.addEventListener('click', async () => {
-      const name = signupNameInput.value.trim();
-      if (!name) { signupMsg.textContent = "Bitte Name eingeben!"; return; }
-      if (!signupSecret[1] || !signupSecret[2] || !signupSecret[3]) { signupMsg.textContent = "Bitte alle 3 Wörter wählen!"; return; }
-
-      btnSubmitSignup.textContent = "...";
-      const isAdmin = (name.toLowerCase() === 'kaio' || name.toLowerCase() === 'ben');
-
-      const { error } = await supabase.from('users').insert({
-        name: name,
-        code_1: signupSecret[1],
-        code_2: signupSecret[2],
-        code_3: signupSecret[3],
-        is_admin: isAdmin,
-        is_approved: isAdmin
-      });
-
-      if (error) {
-        signupMsg.className = "text-xs text-center mt-3 text-red-400";
-        signupMsg.textContent = "Name existiert schon! Versuche dich einzuloggen.";
-        btnSubmitSignup.textContent = "Beantragen";
-      } else {
-        signupMsg.className = "text-xs text-center mt-3 text-green-400 font-bold";
-        if (isAdmin) {
-          signupMsg.textContent = "Boss-Status erkannt! Geh jetzt zum Login-Tab.";
-          loadLoginNames();
-        } else {
-          signupMsg.textContent = "Antrag gesendet! Warte auf Freigabe von Kaio oder Ben.";
-        }
-        btnSubmitSignup.classList.add('hidden');
-      }
-    });
-  }
-
-  // ============================================================
-  // 7. LOGIN: PIN MODAL
-  // ============================================================
-  const pinModal = document.getElementById('pin-modal');
-  const cancelLogin = document.getElementById('cancel-login');
-  const secretBtns = document.querySelectorAll('.secret-btn');
-  const pinError = document.getElementById('pin-error');
-
-  if (cancelLogin) {
-    cancelLogin.addEventListener('click', () => {
-      pinModal.classList.add('opacity-0');
-      setTimeout(() => {
-        pinModal.classList.add('hidden');
-        resetSecret(secretBtns, loginSecret);
-        if (pinError) pinError.classList.add('opacity-0');
-        selectedLoginName = '';
-      }, 300);
-    });
-  }
-
-  secretBtns.forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      const colId = e.target.closest('.secret-col').getAttribute('data-col');
-      const val = e.target.getAttribute('data-val');
-      document.querySelectorAll(`.secret-col[data-col="${colId}"] .secret-btn`).forEach(b => delete b.dataset.active);
-      e.target.dataset.active = "true";
-      loginSecret[colId] = val;
-      if (pinError) pinError.classList.add('opacity-0');
-
-      if (loginSecret[1] && loginSecret[2] && loginSecret[3]) {
-        const { data: userMatch } = await supabase.from('users').select('*')
-          .eq('name', selectedLoginName)
-          .eq('code_1', loginSecret[1])
-          .eq('code_2', loginSecret[2])
-          .eq('code_3', loginSecret[3])
-          .single();
-
-        if (userMatch && userMatch.is_approved) {
-          localStorage.setItem('profile-name', selectedLoginName);
-          resetSecret(secretBtns, loginSecret);
-          pinModal.classList.add('hidden', 'opacity-0');
-          checkAuth();
-        } else {
-          if (pinError) {
-            pinError.textContent = userMatch ? "Noch nicht freigeschaltet!" : "Falscher Code!";
-            pinError.classList.remove('opacity-0');
-          }
-          setTimeout(() => resetSecret(secretBtns, loginSecret), 1000);
-        }
-      }
-    });
-  });
-
-  // ============================================================
-  // 8. LOGOUT
-  // ============================================================
-  const logoutBtn = document.getElementById('logout-btn');
-  if (logoutBtn) {
-    logoutBtn.addEventListener('click', () => {
-      localStorage.removeItem('profile-name');
-      activeUser = null;
-      checkAuth();
-    });
-  }
-
-  // ============================================================
-  // 9. PROFILE: AVATAR UPLOAD
-  // ============================================================
-  const profileAvatar = document.getElementById('profile-avatar');
-  const avatarUpload = document.getElementById('avatar-upload');
-
-  if (avatarUpload && profileAvatar) {
-    avatarUpload.addEventListener('change', async (e) => {
-      if (!activeUser) return;
-      const file = e.target.files[0];
-      if (!file) return;
-      profileAvatar.innerHTML = '<div class="w-full h-full flex items-center justify-center text-[10px] font-bold text-white bg-black/60">Upload...</div>';
-      const fileExt = file.name.split('.').pop();
-      const filePath = `avatars/${activeUser.name}-${Date.now()}.${fileExt}`;
-      await supabase.storage.from('assets').upload(filePath, file);
-      const { data: { publicUrl } } = supabase.storage.from('assets').getPublicUrl(filePath);
-      await supabase.from('users').update({ avatar_url: publicUrl }).eq('id', activeUser.id);
-      profileAvatar.innerHTML = '';
-      profileAvatar.style.backgroundImage = `url('${publicUrl}')`;
-    });
-  }
-
-  // ============================================================
-  // 10. PROFILE: LANGUAGE
-  // ============================================================
-  const profileLangSelect = document.getElementById('profile-lang');
-  if (profileLangSelect) {
-    profileLangSelect.addEventListener('change', async (e) => {
-      if (!activeUser) return;
-      await supabase.from('users').update({ ping_lang: e.target.value }).eq('id', activeUser.id);
-    });
-  }
-
-  // ============================================================
-  // 11. AUDIO RECORDER
-  // ============================================================
-  const recordSoundBtn = document.getElementById('record-sound-btn');
-  const recordStatus = document.getElementById('record-status');
-  const recordStatusCont = document.getElementById('record-status-container');
-  const recordProgress = document.getElementById('record-progress');
-  const playSoundBtn = document.getElementById('play-sound-btn');
-
-  if (recordSoundBtn) {
-    recordSoundBtn.addEventListener('click', async () => {
-      if (!activeUser) return;
-      if (isRecording) { mediaRecorder.stop(); return; }
-
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(stream);
-        audioChunks = [];
-
-        mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
-        mediaRecorder.onstart = () => {
-          isRecording = true;
-          recordSoundBtn.innerHTML = '<span>⏹</span> Stoppen';
-          recordSoundBtn.classList.replace('bg-red-500/10', 'bg-red-500');
-          recordSoundBtn.classList.replace('text-red-200', 'text-white');
-          recordStatusCont.classList.remove('hidden');
-          recordStatusCont.classList.add('flex');
-          recordStatus.textContent = 'Läuft (max 5 Sek)...';
-          let w = 0;
-          const intv = setInterval(() => { w += 2; if (w > 100) clearInterval(intv); recordProgress.style.width = w + '%'; }, 100);
-          setTimeout(() => { if (isRecording) mediaRecorder.stop(); clearInterval(intv); }, 5000);
-        };
-
-        mediaRecorder.onstop = async () => {
-          isRecording = false;
-          recordSoundBtn.innerHTML = '<span>🔴</span> Signature aufnehmen';
-          recordSoundBtn.classList.replace('bg-red-500', 'bg-red-500/10');
-          recordSoundBtn.classList.replace('text-white', 'text-red-200');
-          stream.getTracks().forEach(track => track.stop());
-          recordStatus.textContent = 'Hochladen...';
-          recordProgress.style.width = '100%';
-          const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-          const filePath = `audios/${activeUser.name}-${Date.now()}.webm`;
-          const { error } = await supabase.storage.from('assets').upload(filePath, audioBlob);
-          if (!error) {
-            const { data: { publicUrl } } = supabase.storage.from('assets').getPublicUrl(filePath);
-            await supabase.from('users').update({ audio_url: publicUrl }).eq('id', activeUser.id);
-            activeUser.audio_url = publicUrl;
-            recordStatus.textContent = 'Gespeichert! ✓';
-          } else {
-            recordStatus.textContent = 'Fehler beim Upload!';
-          }
-          setTimeout(() => {
-            recordStatusCont.classList.add('hidden'); recordStatusCont.classList.remove('flex');
-            recordProgress.style.width = '0%';
-          }, 2000);
-        };
-
-        mediaRecorder.start();
-      } catch (err) {
-        alert("Mikrofon-Zugriff nicht möglich.");
-      }
-    });
-  }
-
-  if (playSoundBtn) {
-    playSoundBtn.addEventListener('click', () => {
-      if (activeUser && activeUser.audio_url) {
-        new Audio(activeUser.audio_url).play();
-      } else {
-        alert('Noch keinen Sound aufgenommen!');
-      }
-    });
-  }
-
-  // ============================================================
-  // 12. SPA NAVIGATION
-  // ============================================================
-  const navItems = document.querySelectorAll('.nav-item');
-  const viewPanels = document.querySelectorAll('.view-panel');
-
-  navItems.forEach(item => {
-    item.addEventListener('click', () => {
-      navItems.forEach(nav => nav.classList.remove('active'));
-      item.classList.add('active');
-      viewPanels.forEach(panel => panel.classList.remove('active'));
-      const targetPanel = document.getElementById(item.getAttribute('data-target'));
-      if (targetPanel) {
-        targetPanel.classList.add('active');
-        document.getElementById('app-container').scrollTop = 0;
-      }
-    });
-  });
-
-  // ============================================================
-  // 13. STICKER UPLOAD
-  // ============================================================
-  const stickerUpload = document.getElementById('sticker-upload');
-  const stickerPreview = document.getElementById('sticker-preview');
-  if (stickerUpload && stickerPreview) {
-    stickerUpload.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          stickerPreview.innerHTML = `<img src="${event.target.result}" alt="Sticker" class="w-full h-full object-cover">`;
-          stickerPreview.classList.remove('border-dashed', 'border-gray-400');
-          stickerPreview.classList.add('border-white', 'border-4');
-        };
-        reader.readAsDataURL(file);
-      }
-    });
-  }
-
-  // ============================================================
-  // 14. THEME SELECTOR
-  // ============================================================
-  const themeBtns = document.querySelectorAll('.theme-btn');
-  const body = document.body;
-  const savedTheme = localStorage.getItem('app-theme') || 'cardboard';
-  applyTheme(savedTheme);
-
-  themeBtns.forEach(btn => {
+  // Theme support
+  document.querySelectorAll('.theme-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const theme = btn.getAttribute('data-theme');
-      applyTheme(theme);
-      localStorage.setItem('app-theme', theme);
+      document.body.className = `theme-${theme}`;
+      document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
     });
   });
-
-  function applyTheme(themeName) {
-    body.classList.remove('theme-cardboard', 'theme-notebook', 'theme-grunge', 'theme-piggy');
-    body.classList.add(`theme-${themeName}`);
-    themeBtns.forEach(b => b.getAttribute('data-theme') === themeName ? b.classList.add('active') : b.classList.remove('active'));
-  }
-
-  // ============================================================
-  // 15. PING CHIPS
-  // ============================================================
-  const chipGroups = ['ping-location', 'ping-action', 'ping-time'];
-  chipGroups.forEach(groupId => {
-    const group = document.getElementById(groupId);
-    if (group) {
-      const chips = group.querySelectorAll('.ping-chip');
-      chips.forEach(chip => {
-        chip.addEventListener('click', () => {
-          chips.forEach(c => c.classList.remove('active'));
-          chip.classList.add('active');
-        });
-      });
-    }
-  });
-
-  // ============================================================
-  // 16. NOTIFICATIONS
-  // ============================================================
-  const customAlert = document.getElementById('custom-alert');
-  const alertMsg = document.getElementById('custom-alert-msg');
-  const alertIgnore = document.getElementById('alert-ignore');
-  const alertJoin = document.getElementById('alert-join');
-
-  function showNotification(msg) {
-    if (alertMsg) alertMsg.textContent = msg;
-    if (customAlert) customAlert.classList.add('show');
-    setTimeout(() => hideNotification(), 15000);
-  }
-
-  function hideNotification() {
-    if (customAlert) customAlert.classList.remove('show');
-  }
-
-  if (alertIgnore) alertIgnore.addEventListener('click', hideNotification);
-  if (alertJoin) {
-    alertJoin.addEventListener('click', () => {
-      hideNotification();
-      setTimeout(() => alert('Cool, Nachricht gesendet: "Ich komm auch!"'), 300);
-    });
-  }
-
-  const alertRadar = document.getElementById('alert-radar');
-  const radarModal = document.getElementById('radar-modal');
-  const closeRadar = document.getElementById('close-radar');
-  if (alertRadar) alertRadar.addEventListener('click', () => { hideNotification(); if (radarModal) { radarModal.classList.remove('hidden'); radarModal.classList.add('flex'); } });
-  if (closeRadar) closeRadar.addEventListener('click', () => { if (radarModal) { radarModal.classList.add('hidden'); radarModal.classList.remove('flex'); } });
-
-  // ============================================================
-  // 17. PING BUTTON (LIVE)
-  // ============================================================
-  const smokerBtn = document.getElementById('smoker-btn');
-  if (smokerBtn) {
-    smokerBtn.addEventListener('click', async () => {
-      smokerBtn.style.transform = 'translateY(15px)';
-      const loc = document.querySelector('#ping-location .ping-chip.active')?.getAttribute('data-val') || 'Irgendwo';
-      const action = document.querySelector('#ping-action .ping-chip.active')?.getAttribute('data-val') || 'teeere';
-      const timeVal = document.querySelector('#ping-time .ping-chip.active')?.getAttribute('data-val') || '5';
-      const lang = activeUser?.ping_lang || localStorage.getItem('profile-lang') || 'de';
-      const userName = localStorage.getItem('profile-name') || 'Anon';
-      const timeMap = {
-        '5': { es: 'cinco minutos', pt: 'cinco minutos', it: 'cinque minuti', no: 'fem minutter', de: 'foif minute' },
-        '15': { es: 'quince minutos', pt: 'quinze minutos', it: 'quindici minuti', no: 'femten minutter', de: 'vierzgi minute' },
-        '30': { es: 'treinta minutos', pt: 'trinta minutos', it: 'trenta minuti', no: 'tretti minutter', de: 'halbstund' },
-        '60': { es: 'una hora', pt: 'uma hora', it: "un'ora", no: 'en time', de: 'e stund' },
-        '120': { es: 'dos horas+', pt: 'duas horas+', it: 'due ore+', no: 'to timer+', de: 'zwei stund+' }
-      };
-      const translatedTime = timeMap[timeVal]?.[lang] ?? timeVal;
-      const { error } = await supabase.from('pings').insert({ user_name: userName, location: loc, action: action, duration: translatedTime });
-      smokerBtn.style.transform = '';
-      if (error) {
-        console.error('Ping failed:', error.message);
-        showNotification(`${userName} - ${loc} ${action} ${translatedTime}`);
-      }
-    });
-  }
-
-  // ============================================================
-  // 18. REALTIME: RECEIVE PINGS
-  // ============================================================
-  supabase
-    .channel('public:pings')
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pings' }, (payload) => {
-      const ping = payload.new;
-      showNotification(`${ping.user_name} - ${ping.location} ${ping.action} ${ping.duration}`);
-    })
-    .subscribe();
-
-  // ============================================================
-  // 19. EVENT MODAL (RSVP + BATZENKONTO)
-  // ============================================================
-  const eventModal = document.getElementById('event-modal');
-  const eventModalContent = document.getElementById('event-modal-content');
-  const eventBadges = document.querySelectorAll('.event-badge');
-
-  // Event modals are now handled by openEventModal() called from loadHomeEvents()
-
 
 });
+
