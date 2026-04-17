@@ -7,53 +7,25 @@ document.addEventListener('DOMContentLoaded', () => {
   const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 
-  // --- Auth & Login Logic (Multi-Tenant) ---
+  // --- Shared Variables ---
   const viewLogin = document.getElementById('view-login');
   const appContainer = document.getElementById('app-container');
   const navFelt = document.querySelector('.nav-felt');
   const profileNameDisplay = document.getElementById('profile-name-display');
   const logoutBtn = document.getElementById('logout-btn');
   const loginNameGrid = document.getElementById('login-name-grid');
-  
-  // Shared Login Variables
   const pinModal = document.getElementById('pin-modal');
   const cancelLogin = document.getElementById('cancel-login');
   const pinWelcomeMsg = document.getElementById('pin-welcome-msg');
   const pinError = document.getElementById('pin-error');
   const secretBtns = document.querySelectorAll('.secret-btn');
+  
+  let activeUser = null; 
   let selectedLoginName = '';
   let loginSecret = { 1: null, 2: null, 3: null };
 
-  let activeUser = null; 
-
-  const checkAuth = async () => {
-    const savedName = localStorage.getItem('profile-name');
-    if (savedName) {
-      if (profileNameDisplay) profileNameDisplay.textContent = savedName;
-      if (viewLogin) viewLogin.classList.add('hidden');
-      if (appContainer) appContainer.classList.remove('hidden');
-      if (navFelt) navFelt.classList.remove('hidden');
-      
-      // Load user object
-      const { data: userRow } = await supabase.from('users').select('*').eq('name', savedName).single();
-      if(userRow) {
-         activeUser = userRow;
-         // Setup Admin Panel if admin
-         setupAdminPanel(activeUser);
-         // Profile info
-         const profileAvatar = document.getElementById('profile-avatar');
-         if (userRow.avatar_url && profileAvatar) profileAvatar.style.backgroundImage = `url('${userRow.avatar_url}')`;
-         if (userRow.ping_lang && document.getElementById('profile-lang')) document.getElementById('profile-lang').value = userRow.ping_lang;
-      }
-    } else {
-      if (viewLogin) viewLogin.classList.remove('hidden');
-      if (appContainer) appContainer.classList.add('hidden');
-      if (navFelt) navFelt.classList.add('hidden');
-      loadLoginNames(); // Fetch profiles
-    }
-  };
-
-  const loadLoginNames = async () => {
+  // --- Functions (Hoisted) ---
+  async function loadLoginNames() {
     if(!loginNameGrid) return;
     console.log("Versuche Accounts zu laden...");
     const { data: users, error } = await supabase.from('users').select('name').eq('is_approved', true);
@@ -77,7 +49,6 @@ document.addEventListener('DOMContentLoaded', () => {
        loginNameGrid.innerHTML += `<button class="login-name-btn bg-white/5 border-2 border-white/10 rounded-xl py-4 font-marker text-xl text-white shadow-sm hover:border-orange-400 hover:text-orange-500 hover:bg-white/10 transition-all">${u.name}</button>`;
     });
     
-    // Re-attach listeners dynamically
     document.querySelectorAll('.login-name-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         selectedLoginName = e.target.textContent.trim();
@@ -87,7 +58,36 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => pinModal.classList.remove('opacity-0'), 50);
       });
     });
-  };
+  }
+
+  async function checkAuth() {
+    const savedName = localStorage.getItem('profile-name');
+    if (savedName) {
+      if (profileNameDisplay) profileNameDisplay.textContent = savedName;
+      if (viewLogin) viewLogin.classList.add('hidden');
+      if (appContainer) appContainer.classList.remove('hidden');
+      if (navFelt) navFelt.classList.remove('hidden');
+      
+      const { data: userRow } = await supabase.from('users').select('*').eq('name', savedName).single();
+      if(userRow) {
+         activeUser = userRow;
+         setupAdminPanel(activeUser);
+         const profileAvatar = document.getElementById('profile-avatar');
+         if (userRow.avatar_url && profileAvatar) profileAvatar.style.backgroundImage = `url('${userRow.avatar_url}')`;
+         if (userRow.ping_lang && document.getElementById('profile-lang')) document.getElementById('profile-lang').value = userRow.ping_lang;
+      }
+    } else {
+      if (viewLogin) viewLogin.classList.remove('hidden');
+      if (appContainer) appContainer.classList.add('hidden');
+      if (navFelt) navFelt.classList.add('hidden');
+      loadLoginNames(); 
+    }
+  }
+
+  // --- Logic Execution ---
+
+  // Initial Boot
+  checkAuth();
 
   // Tabs Login/Signup
   const tabLogin = document.getElementById('tab-login');
@@ -111,10 +111,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --- Secret Logic General ---
-  const resetSecret = (btnsCollection, stateObj) => {
+  function resetSecret(btnsCollection, stateObj) {
     if(stateObj) Object.assign(stateObj, { 1: null, 2: null, 3: null });
     btnsCollection.forEach(b => delete b.dataset.active);
-  };
+  }
 
   // --- Signup Logic ---
   const signupBtns = document.querySelectorAll('.signup-btn');
@@ -139,8 +139,13 @@ document.addEventListener('DOMContentLoaded', () => {
       if(!signupSecret[1] || !signupSecret[2] || !signupSecret[3]) return signupMsg.textContent = "Bitte alle 3 Wörter wählen!";
       
       btnSubmitSignup.textContent = "Sende...";
+      
+      const isAdmin = (name.toLowerCase() === 'kaio' || name.toLowerCase() === 'ben');
+      
       const { data, error } = await supabase.from('users').insert({
-        name: name, code_1: signupSecret[1], code_2: signupSecret[2], code_3: signupSecret[3]
+        name: name, code_1: signupSecret[1], code_2: signupSecret[2], code_3: signupSecret[3],
+        is_admin: isAdmin,
+        is_approved: isAdmin // Auto approve if kaio or ben
       });
       
       if(error) {
@@ -148,7 +153,12 @@ document.addEventListener('DOMContentLoaded', () => {
          btnSubmitSignup.textContent = "Beantragen";
       } else {
          signupMsg.className = "text-xs text-center mt-3 text-green-400";
-         signupMsg.textContent = "Antrag erfolgreich gesendet! Warte bis ihn ein Admin (Märek/Ben) bestätigt.";
+         if (isAdmin) {
+           signupMsg.textContent = "Willkommen Chef! Du bist sofort freigeschaltet. Geh zum Login!";
+           loadLoginNames(); 
+         } else {
+           signupMsg.textContent = "Antrag erfolgreich gesendet! Warte bis ihn ein Admin (Kaio/Ben) bestätigt.";
+         }
          btnSubmitSignup.classList.add('hidden');
       }
     });
