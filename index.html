@@ -45,13 +45,17 @@
 
       <!-- Login Section -->
       <div id="section-login" class="block">
-        <h1 class="text-4xl font-marker text-center mb-2 text-white drop-shadow-sm">Zäme 5000</h1>
-        <p class="text-center font-sans text-xs text-gray-400 mb-8 uppercase tracking-widest font-bold">Wer bisch den du?</p>
+        <h1 class="text-4xl font-marker text-center mb-2 text-white drop-shadow-sm" style="color: var(--accent);">Zäme 5000</h1>
+        <p class="text-center font-sans text-xs text-gray-400 mb-6 uppercase tracking-widest font-bold">Wer bisch den du?</p>
         
-        <div class="grid grid-cols-2 gap-4 mb-2 max-h-[40vh] overflow-y-auto pr-2" id="login-name-grid">
-           <!-- Dynamically loaded from Supabase users table -->
-           <div class="col-span-2 text-center text-white/50 text-xs py-4">Lade Accounts...</div>
+        <div class="relative mb-4">
+          <input type="text" id="login-search" autocomplete="off" placeholder="Name tippen..." 
+            class="w-full bg-white/5 border border-white/20 rounded-xl p-4 text-white font-sans text-lg focus:border-[color:var(--accent)] outline-none transition-colors placeholder:text-white/30">
+          <div id="login-autocomplete" class="absolute left-0 right-0 top-full mt-1 rounded-xl overflow-hidden z-20 hidden" style="background: var(--surface); border: 1px solid rgba(255,255,255,0.15);">
+            <!-- Autocomplete suggestions appear here -->
+          </div>
         </div>
+        <p id="login-hint" class="text-center text-white/30 text-[10px] font-sans">Tippe deinen Namen ein um dich anzumelden</p>
       </div>
 
       <!-- Signup Section -->
@@ -126,48 +130,73 @@
   <!-- Main Scrollable Area -->
   <main id="app-container" class="hidden">
 
-    <!-- View: Dashboard -->
+    <!-- ================================================
+         VIEW: EVENTS (Hauptseite)
+         ================================================ -->
     <section id="view-home" class="view-panel active">
-      <h1 class="text-3xl font-marker text-center mt-4 mb-8 text-black opacity-90 drop-shadow-md transform -rotate-2">
-        Zäme 5000
-      </h1>
 
-      <!-- Quote Widget -->
-      <div class="relative w-full max-w-sm mx-auto mb-10">
-        <!-- Tape graphic -->
-        <div class="material-tape w-24 h-6 -top-3 left-1/2 -translate-x-1/2"></div>
-        <div class="material-paper p-6 text-center text-gray-800 text-2xl font-hand">
-          "Bier ist auch nur <br>flüssiges Brot." <br>
-          <span class="text-base text-gray-500 mt-2 block">- Irgendein Schmöker</span>
+      <!-- Header -->
+      <div class="flex items-center justify-between px-1 pt-4 pb-2">
+        <div>
+          <h1 class="text-3xl font-marker" style="color: var(--accent);">Events</h1>
+          <p id="home-greeting" class="text-white/50 font-sans text-xs mt-0.5">Willkommen zurück!</p>
         </div>
+        <div class="text-3xl">🎉</div>
       </div>
 
-      <!-- Sticker Of The Day -->
-      <div class="w-full max-w-sm mx-auto">
-        <h2 class="text-2xl font-marker text-center mb-4 text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]">
-          Sticker of the Day
-        </h2>
-        
-        <div class="polaroid relative">
-          <!-- Tape -->
-          <div class="material-tape w-16 h-5 -top-2 -left-2 rotate-[15deg]"></div>
-          
-          <!-- Image container -->
-          <div id="sticker-preview" class="w-full aspect-square bg-gray-300 mb-2 flex items-center justify-center overflow-hidden border-2 border-dashed border-gray-400">
-             <span class="text-gray-500 text-sm p-4 text-center">Klick mich<br>oder zieh ein Bild hierhin</span>
+      <!-- Next Event Hero Card -->
+      <div id="next-event-hero" class="rounded-2xl p-5 mb-4 relative overflow-hidden" style="background: linear-gradient(135deg, var(--accent2), var(--accent)); border: 1px solid rgba(255,255,255,0.15);">
+        <!-- Decorative shape inside card -->
+        <div class="absolute -right-8 -top-8 w-32 h-32 rounded-full opacity-20" style="background: white;"></div>
+        <div class="absolute -right-2 -bottom-6 w-20 h-20 rounded-full opacity-10" style="background: white;"></div>
+        <div class="relative z-10">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="text-xs font-sans font-bold uppercase tracking-widest bg-white/20 text-white px-2 py-0.5 rounded-full">Nächstes Event</span>
+            <span class="text-xs font-sans text-white/70" id="hero-countdown">Lade...</span>
           </div>
-          <p class="font-hand text-center text-xl text-gray-800">Was für ein Tag!</p>
-          
-          <input type="file" id="sticker-upload" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" accept="image/*">
+          <h2 id="hero-title" class="font-marker text-2xl text-white mb-1">Lade Event...</h2>
+          <p id="hero-date" class="font-sans text-sm text-white/80 mb-1">📅 —</p>
+          <p id="hero-location" class="font-sans text-sm text-white/80 mb-1">📍 —</p>
+          <p id="hero-orgas" class="font-sans text-sm text-white/80 mb-3">👥 —</p>
+          <div class="flex gap-2 items-center">
+            <span id="hero-cost" class="font-sans font-bold text-white bg-white/20 px-3 py-1 rounded-full text-sm">💰 —</span>
+            <button id="hero-rsvp-btn" class="font-sans font-bold text-white border border-white/50 px-4 py-1 rounded-full text-sm hover:bg-white/20 transition-colors">Details →</button>
+          </div>
         </div>
       </div>
+
+      <!-- RSVP Quick Stats -->
+      <div id="hero-rsvp-bar" class="glass-card rounded-xl p-4 mb-4">
+        <div class="flex justify-between items-center mb-2">
+          <span class="font-sans text-xs text-white/60 uppercase tracking-wider">Abstimmung</span>
+          <span id="hero-deadline" class="font-sans text-xs" style="color: var(--accent);">Lade...</span>
+        </div>
+        <div class="flex gap-4">
+          <div class="text-center"><div id="rsvp-yes" class="font-marker text-2xl text-green-400">—</div><div class="text-[10px] text-white/50 font-sans">Dabei</div></div>
+          <div class="text-center"><div id="rsvp-no" class="font-marker text-2xl text-red-400">—</div><div class="text-[10px] text-white/50 font-sans">Nö</div></div>
+          <div class="text-center"><div id="rsvp-pending" class="font-marker text-2xl text-yellow-400">—</div><div class="text-[10px] text-white/50 font-sans">Offen</div></div>
+          <div class="flex-1 flex items-center">
+            <button id="btn-my-rsvp-yes" class="flex-1 py-2 rounded-l-xl font-sans text-xs font-bold text-white transition-all border border-white/10" style="background: rgba(74,222,128,0.15);">👍</button>
+            <button id="btn-my-rsvp-no" class="flex-1 py-2 rounded-r-xl font-sans text-xs font-bold text-white transition-all border border-white/10" style="background: rgba(248,113,113,0.15);">👎</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- All Events List -->
+      <h2 class="font-marker text-xl text-white/80 mb-3">Alle Events</h2>
+      <div id="events-list" class="flex flex-col gap-3 pb-4">
+        <div class="glass-card rounded-xl p-5 flex items-center justify-center">
+          <span class="text-white/40 font-sans text-sm">Lade Events...</span>
+        </div>
+      </div>
+
     </section>
 
-    <!-- View: Ping -->
+    <!-- ================================================
+         VIEW: PING
+         ================================================ -->
     <section id="view-smoker" class="view-panel">
-      <h1 class="text-4xl font-marker text-center mt-2 mb-2 text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-        Treffe
-      </h1>
+      <h1 class="text-4xl font-marker text-center mt-4 mb-2 text-white">Treffe</h1>
       
       <div class="text-center w-full px-4 mb-4">
         <div class="ping-section-title">Wo?</div>
@@ -178,7 +207,6 @@
           <button class="ping-chip" data-val="CouCou">CouCou</button>
           <button class="ping-chip" data-val="Be Mer">Be Mer</button>
         </div>
-
         <div class="ping-section-title">Was geht?</div>
         <div class="ping-grid" id="ping-action">
           <button class="ping-chip active" data-val="teeere">teeere</button>
@@ -187,7 +215,6 @@
           <button class="ping-chip" data-val="en Isstee">en Isstee</button>
           <button class="ping-chip" data-val="mangée">mangée</button>
         </div>
-
         <div class="ping-section-title">Wie lang?</div>
         <div class="ping-grid" id="ping-time">
           <button class="ping-chip active" data-val="5">5 min</button>
@@ -201,86 +228,69 @@
       <div class="buzzer-container" style="height: auto; padding-bottom: 2rem;">
         <div class="buzzer-base">
           <button id="smoker-btn" class="buzzer-btn" style="width: 150px; height: 150px;">
-             <span class="font-marker text-2xl tracking-wider">PING!</span>
+            <span class="font-marker text-2xl tracking-wider">PING!</span>
           </button>
         </div>
       </div>
     </section>
 
-    <!-- View: Event Passport / Calendar -->
-    <section id="view-leaderboard" class="view-panel">
-      <h1 class="text-3xl font-marker text-center mt-4 mb-1 text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-        Goldigi Calendar
-      </h1>
-      <p class="text-center font-sans text-white/80 mb-6 px-4 text-sm leading-tight">Ein Badge pro Monat. Wer dabei ist, punktet.</p>
-
-      <!-- 12 Month Grid -->
-      <div class="grid grid-cols-3 gap-y-6 gap-x-4 max-w-sm mx-auto px-4 mt-2 pb-10">
-        
-        <!-- Jan: Missed -->
-        <div class="flex flex-col items-center opacity-40 grayscale" data-event="missed">
-          <div class="w-16 h-16 rounded-full border-4 border-dashed border-white/50 flex items-center justify-center">
-            <span class="text-white font-marker text-xs">JAN</span>
-          </div>
-        </div>
-
-        <!-- Feb: Missed -->
-        <div class="flex flex-col items-center opacity-40 grayscale" data-event="missed">
-          <div class="w-16 h-16 rounded-full border-4 border-dashed border-white/50 flex items-center justify-center">
-            <span class="text-white font-marker text-xs">FEB</span>
-          </div>
-        </div>
-
-        <!-- Mar: Beerpong (Attended) -->
-        <div class="flex flex-col items-center cursor-pointer hover:scale-110 transition-transform event-badge" data-event="beerpong">
-          <img src="assets/badge_beerpong.png" class="w-16 h-16 rounded-full shadow-lg border-2 border-white filter drop-shadow-md">
-          <span class="text-white font-marker text-xs mt-1 drop-shadow-md">MÄR</span>
-        </div>
-
-        <!-- Apr: Upcoming (Vino) -->
-        <div class="flex flex-col items-center cursor-pointer hover:scale-110 transition-transform event-badge relative" data-event="vinoclay">
-          <img src="assets/badge_vino_clay.png" class="w-16 h-16 rounded-full shadow-lg border-2 border-yellow-300 filter drop-shadow-md">
-          <span class="text-yellow-300 font-marker text-xs mt-1 drop-shadow-md">APR</span>
-        </div>
-
-        <!-- May - Dec (Empty Future Slots) -->
-        <div class="flex flex-col items-center opacity-30"><div class="w-16 h-16 rounded-full border-4 border-dashed border-white/30 flex items-center justify-center"><span class="text-white font-marker text-xs">MAI</span></div></div>
-        <div class="flex flex-col items-center opacity-30"><div class="w-16 h-16 rounded-full border-4 border-dashed border-white/30 flex items-center justify-center"><span class="text-white font-marker text-xs">JUN</span></div></div>
-        <div class="flex flex-col items-center opacity-30"><div class="w-16 h-16 rounded-full border-4 border-dashed border-white/30 flex items-center justify-center"><span class="text-white font-marker text-xs">JUL</span></div></div>
-        <div class="flex flex-col items-center opacity-30"><div class="w-16 h-16 rounded-full border-4 border-dashed border-white/30 flex items-center justify-center"><span class="text-white font-marker text-xs">AUG</span></div></div>
-        <div class="flex flex-col items-center opacity-30"><div class="w-16 h-16 rounded-full border-4 border-dashed border-white/30 flex items-center justify-center"><span class="text-white font-marker text-xs">SEP</span></div></div>
-        <div class="flex flex-col items-center opacity-30"><div class="w-16 h-16 rounded-full border-4 border-dashed border-white/30 flex items-center justify-center"><span class="text-white font-marker text-xs">OKT</span></div></div>
-        <div class="flex flex-col items-center opacity-30"><div class="w-16 h-16 rounded-full border-4 border-dashed border-white/30 flex items-center justify-center"><span class="text-white font-marker text-xs">NOV</span></div></div>
-        <div class="flex flex-col items-center opacity-30"><div class="w-16 h-16 rounded-full border-4 border-dashed border-white/30 flex items-center justify-center"><span class="text-white font-marker text-xs">DEZ</span></div></div>
-
-      </div>
-    </section>
-
-    <!-- View: Profile -->
+    <!-- ================================================
+         VIEW: PROFILE
+         ================================================ -->
     <section id="view-profile" class="view-panel">
-      <h1 class="text-3xl font-marker text-center mt-4 mb-4 text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-        Profil
-      </h1>
-      
-      <!-- Avatar Upload -->
-      <div class="relative w-max mx-auto mt-4 cursor-pointer" id="avatar-container">
+      <h1 class="text-3xl font-marker text-center mt-4 mb-4 text-white">Profil</h1>
+
+      <!-- Avatar -->
+      <div class="relative w-max mx-auto mt-2 cursor-pointer" id="avatar-container">
         <div id="profile-avatar" class="avatar-cutout"></div>
-        <div class="absolute bottom-0 right-0 bg-white rounded-full w-8 h-8 shadow-lg flex items-center justify-center border-2 border-black hover:scale-110 transition-transform">
+        <div class="absolute bottom-0 right-0 rounded-full w-8 h-8 shadow-lg flex items-center justify-center border-2 border-white/20 hover:scale-110 transition-transform" style="background: var(--accent);">
           <span class="text-sm">✏️</span>
         </div>
         <input type="file" id="avatar-upload" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" accept="image/*">
       </div>
-      
-      <!-- Name Edit -->
-      <div class="flex flex-col items-center mt-6 mb-4">
-        <h2 id="profile-name-display" class="font-marker text-3xl text-white drop-shadow-sm mb-1 bg-black/30 px-6 py-2 rounded-lg -rotate-2">Anon</h2>
-        <p class="font-sans text-sm text-white/50 uppercase tracking-widest font-bold mt-1">Eingeloggt</p>
+
+      <!-- Name + Role -->
+      <div class="flex flex-col items-center mt-4 mb-4">
+        <h2 id="profile-name-display" class="font-marker text-3xl text-white mb-1">Anon</h2>
+        <span id="profile-role-badge" class="font-sans text-[10px] font-bold uppercase tracking-widest px-3 py-0.5 rounded-full" style="background: var(--accent); color: white;">Member</span>
       </div>
 
-      <!-- Language Select -->
-      <div class="mt-4 bg-black/40 p-4 rounded-xl max-w-sm mx-auto w-full mb-4">
-        <h3 class="font-marker text-white text-xl text-center mb-2">Lieblings-Ping-Sprache</h3>
-        <select id="profile-lang" class="w-full bg-white/10 text-white font-sans p-2 rounded border border-white/30 outline-none focus:border-white">
+      <!-- Stats -->
+      <div class="glass-card rounded-xl p-4 max-w-sm mx-auto w-full mb-4">
+        <h3 class="font-marker text-white text-lg mb-3">Deine Stats</h3>
+        <div class="grid grid-cols-3 gap-3">
+          <div class="text-center">
+            <div id="stat-events" class="font-marker text-2xl" style="color: var(--accent);">—</div>
+            <div class="text-[10px] text-white/50 font-sans">Events</div>
+          </div>
+          <div class="text-center">
+            <div id="stat-badges" class="font-marker text-2xl text-yellow-400">—</div>
+            <div class="text-[10px] text-white/50 font-sans">Badges</div>
+          </div>
+          <div class="text-center">
+            <div id="stat-organized" class="font-marker text-2xl text-blue-400">—</div>
+            <div class="text-[10px] text-white/50 font-sans">Organisiert</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Signature Sound -->
+      <div class="glass-card rounded-xl p-4 max-w-sm mx-auto w-full mb-4">
+        <h3 class="font-marker text-white text-lg mb-3">Signature Sound</h3>
+        <div class="flex flex-col items-center gap-2">
+          <button id="play-sound-btn" class="w-full py-2 rounded-xl font-sans text-sm font-bold text-white transition-all" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);">🔊 Abspielen</button>
+          <button id="record-sound-btn" class="w-full py-2 rounded-xl font-sans text-sm font-bold transition-all border border-red-500/30 bg-red-500/10 text-red-200">🔴 Aufnehmen (Mikro)</button>
+          <div id="record-status-container" class="hidden flex-col items-center w-full">
+            <div class="w-full bg-white/10 rounded-full h-1.5 mb-1"><div id="record-progress" class="h-1.5 rounded-full" style="width: 0%; background: var(--accent);"></div></div>
+            <p id="record-status" class="text-[10px] text-white/50 text-center uppercase tracking-widest font-bold">Läuft...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Language -->
+      <div class="glass-card rounded-xl p-4 max-w-sm mx-auto w-full mb-4">
+        <h3 class="font-marker text-white text-lg mb-2">Ping-Sprache</h3>
+        <select id="profile-lang" class="w-full bg-white/10 text-white font-sans p-2 rounded-xl border border-white/20 outline-none">
           <option value="es" class="text-black">Spanisch (Diego, Tambi)</option>
           <option value="pt" class="text-black">Portugiesisch (Märek)</option>
           <option value="it" class="text-black">Italienisch (Moro)</option>
@@ -289,135 +299,85 @@
         </select>
       </div>
 
+      <!-- Admin Panel -->
+      <div id="admin-panel" class="glass-card rounded-xl p-4 max-w-sm mx-auto w-full mb-4 hidden" style="border: 1px solid rgba(239,68,68,0.3);">
+        <h3 class="font-marker text-red-400 text-xl mb-1">⚡ Admin</h3>
+        <p class="text-xs text-white/50 font-sans mb-3">Ausstehende Freischaltungen</p>
+        <div id="admin-pending-list" class="flex flex-col gap-2 font-sans text-sm"></div>
+      </div>
 
-      
-      <div class="flex flex-col items-center mt-6">
-        <button id="play-sound-btn" class="material-paper torn-edges px-6 py-3 font-marker text-lg hover:scale-105 active:scale-95 transition-transform flex items-center gap-2 mb-2">
-          <span>🔊</span> Ping abspielen
-        </button>
-        <div class="flex flex-col items-center">
-          <button id="record-sound-btn" class="border border-red-500/30 bg-red-500/10 px-4 py-2 text-red-200 font-sans text-xs rounded-full hover:bg-red-500/20 transition-colors flex items-center gap-1 shadow-sm">
-            <span>🔴</span> Signature aufnehmen (Mikro)
-          </button>
-          <div id="record-status-container" class="hidden flex-col items-center mt-2 w-full">
-             <div class="w-full bg-white/10 rounded-full h-1.5 mb-1"><div id="record-progress" class="bg-red-500 h-1.5 rounded-full" style="width: 0%"></div></div>
-             <p id="record-status" class="text-[10px] text-white/50 text-center uppercase tracking-widest font-bold">Aufnahme läuft...</p>
+      <!-- Theme Selector -->
+      <div class="glass-card rounded-xl p-4 max-w-sm mx-auto w-full mb-4">
+        <h3 class="font-marker text-white text-xl text-center mb-3">Vibe wählen</h3>
+        <div class="theme-selector-container pb-2">
+          <div class="flex flex-col items-center gap-1">
+            <button class="theme-btn theme-btn-cardboard active" data-theme="cardboard"></button>
+            <span class="text-[9px] font-sans text-white/50">Warm</span>
+          </div>
+          <div class="flex flex-col items-center gap-1">
+            <button class="theme-btn theme-btn-notebook" data-theme="notebook"></button>
+            <span class="text-[9px] font-sans text-white/50">Ocean</span>
+          </div>
+          <div class="flex flex-col items-center gap-1">
+            <button class="theme-btn theme-btn-grunge" data-theme="grunge"></button>
+            <span class="text-[9px] font-sans text-white/50">Dark</span>
+          </div>
+          <div class="flex flex-col items-center gap-1">
+            <button class="theme-btn theme-btn-piggy" data-theme="piggy"></button>
+            <span class="text-[9px] font-sans text-white/50">Pink</span>
           </div>
         </div>
       </div>
 
-      <!-- Admin Panel (Hidden by Default) -->
-      <div id="admin-panel" class="mt-8 bg-red-900/30 border-2 border-red-500/50 p-4 rounded-xl max-w-sm mx-auto w-full hidden">
-        <h3 class="font-marker text-red-400 text-xl text-center mb-2">Admin: Freischaltungen</h3>
-        <p class="text-xs text-white/60 text-center font-sans mb-3">Ausstehende Anträge für die App.</p>
-        <div id="admin-pending-list" class="flex flex-col gap-2 font-sans text-sm">
-           <div class="text-white/40 text-center text-xs">Lade Anträge...</div>
-        </div>
-      </div>
-
-      <!-- Theme Selector -->
-      <div class="mt-8 bg-black/40 p-4 rounded-xl max-w-sm mx-auto w-full">
-        <h3 class="font-marker text-white text-xl text-center mb-2">Design</h3>
-        <div class="theme-selector-container pb-2">
-          <button class="theme-btn theme-btn-cardboard active" data-theme="cardboard" title="Warm"></button>
-          <button class="theme-btn theme-btn-notebook"  data-theme="notebook"  title="Ocean"></button>
-          <button class="theme-btn theme-btn-grunge"    data-theme="grunge"    title="Dark"></button>
-          <button class="theme-btn theme-btn-piggy"     data-theme="piggy"     title="Pink"></button>
-        </div>
-      </div>
-
-      <div class="flex justify-center mt-6 pb-6">
-        <button id="logout-btn" class="material-paper torn-edges px-6 py-3 font-marker text-lg text-red-600 hover:scale-105 active:scale-95 transition-transform flex items-center gap-2 mb-10">
-          <span>🔐</span> Ausloggen (App sperren)
+      <!-- Logout -->
+      <div class="flex justify-center mt-2 pb-8">
+        <button id="logout-btn" class="font-sans text-sm text-white/40 hover:text-red-400 transition-colors flex items-center gap-2 py-3">
+          🔐 Ausloggen
         </button>
       </div>
     </section>
 
   </main>
 
-  <!-- Custom Push Notification Alert (iOS Style) -->
+  <!-- ================================================
+       CUSTOM NOTIFICATION ALERT
+       ================================================ -->
   <div id="custom-alert" class="ios-alert">
     <div class="flex items-center gap-2 mb-1 px-4 pt-3">
-      <div class="w-6 h-6 rounded bg-black flex items-center justify-center fill-white">
-        <span class="text-xs">🏴‍☠️</span>
-      </div>
-      <div class="flex-1 text-[13px] text-gray-500 font-sans flex justify-between">
-        <span class="uppercase tracking-wide font-semibold text-gray-600">Zäme</span>
+      <span class="text-lg">🏴‍☠️</span>
+      <div class="flex-1 text-[13px] font-sans flex justify-between" style="color: var(--text-muted);">
+        <span class="uppercase tracking-wide font-semibold">Zäme</span>
         <span>jetzt</span>
       </div>
     </div>
     <div class="px-4 pb-3">
-      <p id="custom-alert-msg" class="font-sans font-medium text-black text-[15px] leading-snug">
-        <!-- message here -->
-      </p>
+      <p id="custom-alert-msg" class="font-sans font-medium text-white text-[15px] leading-snug"></p>
     </div>
-    <div class="flex flex-col border-t border-gray-300 w-full font-sans font-medium text-[15px]">
-      <div class="flex w-full">
-        <button id="alert-ignore" class="flex-1 py-3 text-center text-gray-400 border-r border-gray-300 active:bg-gray-200/50 transition-colors">Abbruch</button>
-        <button id="alert-join" class="flex-1 py-3 text-center text-blue-600 active:bg-blue-200/50 transition-colors">Join ⚡️</button>
-      </div>
-      <button id="alert-radar" class="w-full py-2 bg-black text-green-400 border-t border-gray-300 active:bg-gray-800 transition-colors text-sm font-bold flex items-center justify-center gap-2">
-        <span class="animate-pulse w-2 h-2 bg-green-400 rounded-full inline-block"></span>
-        Live Radar (OTG)
-      </button>
+    <div class="flex border-t w-full font-sans font-medium text-[15px]" style="border-color: rgba(255,255,255,0.1);">
+      <button id="alert-ignore" class="flex-1 py-3 text-center text-white/40 border-r active:bg-white/5 transition-colors" style="border-color: rgba(255,255,255,0.1);">Schliessen</button>
+      <button id="alert-join" class="flex-1 py-3 text-center font-bold active:bg-white/5 transition-colors" style="color: var(--accent);">Join ⚡️</button>
     </div>
   </div>
 
-  <!-- Event Modal Overlay -->
-  <div id="event-modal" class="fixed inset-0 bg-black/80 z-[100] hidden flex-col items-center justify-center p-4">
-    <!-- Populated by JS -->
-    <div id="event-modal-content" class="w-full max-w-sm bg-[#faf8f5] rounded-xl overflow-y-auto max-h-[90vh] relative shadow-2xl">
+  <!-- ================================================
+       EVENT DETAIL MODAL
+       ================================================ -->
+  <div id="event-modal" class="fixed inset-0 bg-black/80 z-[100] hidden flex-col items-center justify-end p-0">
+    <div id="event-modal-content" class="w-full max-w-lg rounded-t-3xl overflow-y-auto max-h-[93vh] relative shadow-2xl" style="background: var(--surface);">
     </div>
   </div>
 
-  <!-- OTG Radar Modal -->
-  <div id="radar-modal" class="fixed inset-0 bg-black/95 z-[110] hidden flex-col items-center justify-center p-4 backdrop-blur-sm">
-    <button id="close-radar" class="absolute top-6 right-6 text-white text-3xl font-sans hover:text-green-400 transition-colors">&times;</button>
-    <h2 class="text-white font-marker text-2xl mb-12">⚡ Live Radar</h2>
-    
-    <!-- Radar Animation -->
-    <div class="relative w-[280px] h-[280px] border border-green-500/50 rounded-full flex items-center justify-center overflow-hidden">
-        <!-- Ping effect -->
-        <div class="absolute inset-0 rounded-full bg-green-500/10 animate-ping" style="animation-duration: 2.5s;"></div>
-        <!-- Grid lines -->
-        <div class="absolute inset-x-0 top-1/2 h-[1px] bg-green-500/30"></div>
-        <div class="absolute inset-y-0 left-1/2 w-[1px] bg-green-500/30"></div>
-        <div class="absolute inset-0 rounded-full border border-green-500/20 m-12"></div>
-        
-        <!-- Radar Sweep -->
-        <div class="absolute inset-0 bg-[conic-gradient(from_0deg,transparent_0deg,rgba(34,197,94,0.4)_90deg,transparent_90deg)] origin-center animate-[spin_3s_linear_infinite] rounded-full"></div>
-
-        <!-- Me Center -->
-        <div class="absolute bg-white w-3 h-3 rounded-full shadow-[0_0_10px_white] z-10"></div>
-        
-        <!-- Friend 1 -->
-        <div class="absolute bg-green-400 w-3 h-3 rounded-full shadow-[0_0_10px_#4ade80] top-[30%] left-[65%] flex flex-col items-center origin-bottom">
-            <span class="text-white text-[11px] mt-3 font-sans font-bold bg-black px-1.5 py-0.5 rounded shadow">Tambi (180m)</span>
-        </div>
-        
-        <!-- Friend 2 -->
-        <div class="absolute bg-green-400 w-3 h-3 rounded-full shadow-[0_0_10px_#4ade80] bottom-[15%] left-[25%] flex flex-col items-center">
-            <span class="text-white text-[11px] mt-3 font-sans font-bold bg-black px-1.5 py-0.5 rounded shadow">Lulla (450m)</span>
-        </div>
-    </div>
-    
-    <p class="text-green-500 font-sans mt-12 text-center text-sm font-medium animate-pulse tracking-wide">Signal wird geortet...</p>
-    <button class="mt-4 text-white/50 text-xs font-sans underline" onclick="document.getElementById('radar-modal').classList.add('hidden'); document.getElementById('radar-modal').classList.remove('flex');">Schließen</button>
-  </div>
-
-  <!-- Bottom Navigation -->
-  <nav class="nav-felt">
+  <!-- ================================================
+       BOTTOM NAVIGATION
+       ================================================ -->
+  <nav class="nav-felt hidden">
     <button class="nav-item active" data-target="view-home">
-      <span class="text-2xl">🏠</span>
-      <span>Home</span>
+      <span class="text-2xl">📅</span>
+      <span>Events</span>
     </button>
     <button class="nav-item" data-target="view-smoker">
       <span class="text-2xl">📡</span>
       <span>Ping</span>
-    </button>
-    <button class="nav-item" data-target="view-leaderboard">
-      <span class="text-2xl">🏆</span>
-      <span>Ranks</span>
     </button>
     <button class="nav-item" data-target="view-profile">
       <span class="text-2xl">👤</span>

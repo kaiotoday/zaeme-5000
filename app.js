@@ -64,45 +64,69 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  async function loadLoginNames() {
-    const loginNameGrid = document.getElementById('login-name-grid');
-    if (!loginNameGrid) return;
+  // ============================================================
+  // HELPER: All approved users (cached for autocomplete)
+  // ============================================================
+  let allUsers = [];
 
-    loginNameGrid.innerHTML = '<div class="col-span-2 text-center text-white/50 text-xs py-4">Lade...</div>';
-    const { data: users, error } = await supabase.from('users').select('name').eq('is_approved', true);
+  async function loadAllUsers() {
+    const { data } = await supabase.from('users').select('name').eq('is_approved', true);
+    allUsers = data || [];
+  }
 
-    if (error) {
-      console.error('Supabase Error:', error);
-      loginNameGrid.innerHTML = `<div class="col-span-2 text-center text-red-400 text-xs py-4 border border-red-500/20 rounded-xl">
-        Datenbankfehler! Tabelle existiert nicht?<br>
-        <span class="opacity-50 text-[10px]">${error.message}</span>
-      </div>`;
-      return;
-    }
+  // ============================================================
+  // AUTOCOMPLETE LOGIN SEARCH
+  // ============================================================
+  function setupLoginAutocomplete() {
+    const searchInput = document.getElementById('login-search');
+    const autocompleteBox = document.getElementById('login-autocomplete');
+    const hint = document.getElementById('login-hint');
+    if (!searchInput || !autocompleteBox) return;
 
-    if (!users || users.length === 0) {
-      loginNameGrid.innerHTML = '<div class="col-span-2 text-center text-white/50 text-xs py-6 italic">Noch keine User.<br>Registriere dich zuerst!</div>';
-      return;
-    }
+    searchInput.addEventListener('input', () => {
+      const q = searchInput.value.trim().toLowerCase();
+      if (q.length < 1) { autocompleteBox.classList.add('hidden'); return; }
 
-    loginNameGrid.innerHTML = '';
-    users.forEach(u => {
-      loginNameGrid.innerHTML += `<button class="login-name-btn bg-white/5 border-2 border-white/10 rounded-xl py-4 font-marker text-xl text-white hover:border-orange-400 hover:text-orange-500 hover:bg-white/10 transition-all">${u.name}</button>`;
+      const matches = allUsers.filter(u => u.name.toLowerCase().startsWith(q));
+      if (matches.length === 0) {
+        autocompleteBox.innerHTML = `<div class="px-4 py-3 text-white/40 text-sm font-sans">Kein Account gefunden</div>`;
+        autocompleteBox.classList.remove('hidden');
+        return;
+      }
+
+      autocompleteBox.innerHTML = matches.map(u => `
+        <button class="ac-item w-full text-left px-4 py-3 font-marker text-lg text-white hover:bg-white/10 transition-colors border-b border-white/5 last:border-0" data-name="${u.name}">
+          ${u.name}
+        </button>
+      `).join('');
+      autocompleteBox.classList.remove('hidden');
+
+      autocompleteBox.querySelectorAll('.ac-item').forEach(btn => {
+        btn.addEventListener('click', () => {
+          selectedLoginName = btn.getAttribute('data-name');
+          searchInput.value = selectedLoginName;
+          autocompleteBox.classList.add('hidden');
+          if (hint) hint.textContent = `${selectedLoginName} ausgewählt — wähl deinen Code!`;
+
+          // Open pin modal
+          const pinWelcomeMsg = document.getElementById('pin-welcome-msg');
+          const pinModal = document.getElementById('pin-modal');
+          const secretBtns = document.querySelectorAll('.secret-btn');
+          if (pinWelcomeMsg) pinWelcomeMsg.textContent = `Hallo ${selectedLoginName} 👋`;
+          if (pinModal) {
+            pinModal.classList.remove('hidden');
+            resetSecret(secretBtns, loginSecret);
+            setTimeout(() => pinModal.classList.remove('opacity-0'), 50);
+          }
+        });
+      });
     });
 
-    document.querySelectorAll('.login-name-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        selectedLoginName = e.target.textContent.trim();
-        const pinWelcomeMsg = document.getElementById('pin-welcome-msg');
-        const pinModal = document.getElementById('pin-modal');
-        const secretBtns = document.querySelectorAll('.secret-btn');
-        if (pinWelcomeMsg) pinWelcomeMsg.textContent = `Hallo ${selectedLoginName}`;
-        if (pinModal) {
-          pinModal.classList.remove('hidden');
-          resetSecret(secretBtns, loginSecret);
-          setTimeout(() => pinModal.classList.remove('opacity-0'), 50);
-        }
-      });
+    // Hide on outside click
+    document.addEventListener('click', (e) => {
+      if (!searchInput.contains(e.target) && !autocompleteBox.contains(e.target)) {
+        autocompleteBox.classList.add('hidden');
+      }
     });
   }
 
@@ -123,16 +147,248 @@ document.addEventListener('DOMContentLoaded', () => {
       if (userRow) {
         activeUser = userRow;
         setupAdminPanel(activeUser);
+
+        // Role badge
+        const roleBadge = document.getElementById('profile-role-badge');
+        if (roleBadge) roleBadge.textContent = userRow.role === 'admin' ? '⚡ Admin' : userRow.role === 'organizer' ? '🎯 Organizer' : 'Member';
+
+        // Stats placeholders
+        const statOrganized = document.getElementById('stat-organized');
+        if (statOrganized) statOrganized.textContent = userRow.organized_count || 0;
+
         const profileAvatar = document.getElementById('profile-avatar');
         if (userRow.avatar_url && profileAvatar) profileAvatar.style.backgroundImage = `url('${userRow.avatar_url}')`;
         const profileLangSelect = document.getElementById('profile-lang');
         if (userRow.ping_lang && profileLangSelect) profileLangSelect.value = userRow.ping_lang;
       }
+
+      // Load home greeting
+      const greeting = document.getElementById('home-greeting');
+      if (greeting) greeting.textContent = `Hey ${savedName}! 👋`;
+
+      // Load event homepage data
+      loadHomeEvents();
+
     } else {
       if (viewLogin) viewLogin.classList.remove('hidden');
       if (appContainer) appContainer.classList.add('hidden');
       if (navFelt) navFelt.classList.add('hidden');
-      loadLoginNames();
+      await loadAllUsers();
+      setupLoginAutocomplete();
+    }
+  }
+
+  // ============================================================
+  // HOME: LOAD EVENTS
+  // ============================================================
+  async function loadHomeEvents() {
+    const eventsList = document.getElementById('events-list');
+    const heroTitle = document.getElementById('hero-title');
+    const heroDate = document.getElementById('hero-date');
+    const heroLocation = document.getElementById('hero-location');
+    const heroOrgas = document.getElementById('hero-orgas');
+    const heroCost = document.getElementById('hero-cost');
+    const heroCountdown = document.getElementById('hero-countdown');
+    const heroDeadline = document.getElementById('hero-deadline');
+
+    // Try fetching from DB first
+    const { data: events } = await supabase.from('events').select('*').eq('is_published', true).order('event_date', { ascending: true });
+
+    const now = new Date();
+    // Find next upcoming event
+    const upcoming = events?.filter(e => e.event_date && new Date(e.event_date) >= now) || [];
+    const past = events?.filter(e => e.event_date && new Date(e.event_date) < now) || [];
+
+    // If no DB events yet, show a hardcoded placeholder for the Beerpong event
+    const nextEvent = upcoming[0] || {
+      id: 'placeholder',
+      title: 'Beerpong Bash',
+      event_date: '2026-05-08',
+      location: "Lulla's Wintergarten",
+      organizer_1: 'Lulla',
+      organizer_2: 'Sergito',
+      cost_per_person: 15,
+      rsvp_deadline: '2026-05-05T23:59:00+02:00',
+      is_published: true
+    };
+
+    // Fill Hero
+    if (heroTitle) heroTitle.textContent = nextEvent.title;
+    if (heroDate && nextEvent.event_date) {
+      const d = new Date(nextEvent.event_date);
+      heroDate.textContent = `📅 ${d.toLocaleDateString('de-CH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}`;
+    }
+    if (heroLocation) heroLocation.textContent = `📍 ${nextEvent.location || '—'}`;
+    if (heroOrgas) heroOrgas.textContent = `👥 ${nextEvent.organizer_1 || '?'} & ${nextEvent.organizer_2 || '?'}`;
+    if (heroCost) heroCost.textContent = `💰 ${nextEvent.cost_per_person ? nextEvent.cost_per_person + ' CHF' : '—'}`;
+
+    // Countdown
+    if (heroCountdown && nextEvent.event_date) {
+      const eventDate = new Date(nextEvent.event_date);
+      const daysLeft = Math.ceil((eventDate - now) / (1000 * 60 * 60 * 24));
+      heroCountdown.textContent = daysLeft > 0 ? `noch ${daysLeft} Tage` : 'Heute! 🎉';
+    }
+
+    // RSVP Deadline
+    if (heroDeadline && nextEvent.rsvp_deadline) {
+      const deadline = new Date(nextEvent.rsvp_deadline);
+      const daysToDeadline = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
+      heroDeadline.textContent = daysToDeadline > 0 ? `⏳ Noch ${daysToDeadline} Tage zum Abstimmen` : 'Abstimmung geschlossen';
+    }
+
+    // RSVP counts
+    if (nextEvent.id !== 'placeholder') {
+      const { data: rsvps } = await supabase.from('event_rsvp').select('status').eq('event_id', nextEvent.id);
+      const yes = rsvps?.filter(r => r.status === 'yes').length || 0;
+      const no = rsvps?.filter(r => r.status === 'no').length || 0;
+      const pending = rsvps?.filter(r => r.status === 'pending').length || 0;
+      const yesEl = document.getElementById('rsvp-yes');
+      const noEl = document.getElementById('rsvp-no');
+      const pendEl = document.getElementById('rsvp-pending');
+      if (yesEl) yesEl.textContent = yes;
+      if (noEl) noEl.textContent = no;
+      if (pendEl) pendEl.textContent = pending;
+    }
+
+    // RSVP Buttons
+    const btnYes = document.getElementById('btn-my-rsvp-yes');
+    const btnNo = document.getElementById('btn-my-rsvp-no');
+    if (btnYes && btnNo && nextEvent.id !== 'placeholder' && activeUser) {
+      const doRsvp = async (status) => {
+        await supabase.from('event_rsvp').upsert(
+          { event_id: nextEvent.id, user_name: activeUser.name, status },
+          { onConflict: 'event_id,user_name' }
+        );
+        loadHomeEvents();
+      };
+      btnYes.onclick = () => doRsvp('yes');
+      btnNo.onclick = () => doRsvp('no');
+    }
+
+    // Hero detail button
+    const heroBtn = document.getElementById('hero-rsvp-btn');
+    if (heroBtn) heroBtn.onclick = () => openEventModal(nextEvent);
+
+    // Events list
+    if (eventsList) {
+      let html = '';
+
+      // Upcoming events
+      upcoming.forEach(ev => {
+        const d = new Date(ev.event_date);
+        const dateStr = d.toLocaleDateString('de-CH', { day: 'numeric', month: 'short', year: 'numeric' });
+        html += `
+          <div class="glass-card rounded-xl p-4 cursor-pointer hover:scale-[1.01] transition-transform event-card" data-event-id="${ev.id}">
+            <div class="flex justify-between items-start mb-2">
+              <h3 class="font-marker text-lg text-white">${ev.title}</h3>
+              <span class="text-[10px] font-sans font-bold uppercase px-2 py-0.5 rounded-full text-white" style="background: var(--accent);">Bald</span>
+            </div>
+            <p class="font-sans text-xs text-white/60 mb-1">📅 ${dateStr}</p>
+            <p class="font-sans text-xs text-white/60 mb-1">📍 ${ev.location || '—'}</p>
+            <p class="font-sans text-xs text-white/60">👥 ${ev.organizer_1 || '?'} & ${ev.organizer_2 || '?'} · 💰 ${ev.cost_per_person || '?'} CHF</p>
+          </div>`;
+      });
+
+      // Placeholder future months
+      const months = ['Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+      months.forEach(m => {
+        html += `
+          <div class="rounded-xl p-4 border-2 border-dashed opacity-40" style="border-color: var(--border);">
+            <div class="flex justify-between items-center">
+              <div>
+                <h3 class="font-marker text-lg text-white/50">${m} 2026</h3>
+                <p class="font-sans text-xs text-white/30">Organisatoren: TBD</p>
+              </div>
+              <span class="text-2xl">🕐</span>
+            </div>
+          </div>`;
+      });
+
+      // Past events
+      past.forEach(ev => {
+        const d = new Date(ev.event_date);
+        const dateStr = d.toLocaleDateString('de-CH', { day: 'numeric', month: 'short', year: 'numeric' });
+        html += `
+          <div class="glass-card rounded-xl p-4 opacity-60">
+            <div class="flex justify-between items-start mb-1">
+              <h3 class="font-marker text-base text-white/70">${ev.title}</h3>
+              <span class="text-[10px] font-sans text-white/40">✓ Abgeschlossen</span>
+            </div>
+            <p class="font-sans text-xs text-white/40">📅 ${dateStr}</p>
+          </div>`;
+      });
+
+      if (!html) html = '<div class="glass-card rounded-xl p-5 text-center text-white/40 font-sans text-sm">Noch keine Events erfasst.<br>SQL-Script ausführen!</div>';
+      eventsList.innerHTML = html;
+
+      // Attach click listeners to event cards
+      document.querySelectorAll('.event-card').forEach(card => {
+        card.addEventListener('click', () => {
+          const id = card.getAttribute('data-event-id');
+          const ev = events?.find(e => e.id === id);
+          if (ev) openEventModal(ev);
+        });
+      });
+    }
+  }
+
+  function openEventModal(ev) {
+    const modal = document.getElementById('event-modal');
+    const content = document.getElementById('event-modal-content');
+    if (!modal || !content) return;
+
+    const d = ev.event_date ? new Date(ev.event_date).toLocaleDateString('de-CH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '—';
+
+    content.innerHTML = `
+      <div class="p-6 pb-4 relative" style="background: linear-gradient(135deg, var(--accent2), var(--accent));">
+        <button id="close-event-modal" class="absolute top-4 right-4 text-white/70 hover:text-white text-3xl leading-none">&times;</button>
+        <h2 class="font-marker text-3xl text-white mb-1">${ev.title}</h2>
+        <p class="font-sans text-sm text-white/70">${d}</p>
+      </div>
+      <div class="p-6" style="background: var(--surface);">
+        <div class="grid grid-cols-2 gap-3 mb-4">
+          <div class="glass-card rounded-xl p-3">
+            <div class="text-xs text-white/50 font-sans mb-1">Ort</div>
+            <div class="font-sans text-sm text-white font-bold">${ev.location || '—'}</div>
+          </div>
+          <div class="glass-card rounded-xl p-3">
+            <div class="text-xs text-white/50 font-sans mb-1">Kosten</div>
+            <div class="font-marker text-xl" style="color: var(--accent);">${ev.cost_per_person || '—'} CHF</div>
+          </div>
+          <div class="glass-card rounded-xl p-3 col-span-2">
+            <div class="text-xs text-white/50 font-sans mb-1">Organisatoren</div>
+            <div class="font-sans text-sm text-white font-bold">${ev.organizer_1 || '?'} & ${ev.organizer_2 || '?'}</div>
+          </div>
+        </div>
+        ${ev.description ? `<p class="font-sans text-sm text-white/70 mb-4 leading-relaxed">${ev.description}</p>` : ''}
+        <div class="flex gap-3">
+          <button id="modal-rsvp-yes" class="flex-1 py-3 rounded-xl font-sans font-bold text-white" style="background: rgba(74,222,128,0.2); border: 1px solid rgba(74,222,128,0.4);">👍 Ich bin dabei</button>
+          <button id="modal-rsvp-no" class="flex-1 py-3 rounded-xl font-sans font-bold text-white" style="background: rgba(248,113,113,0.2); border: 1px solid rgba(248,113,113,0.4);">👎 Nö</button>
+        </div>
+      </div>
+    `;
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+
+    document.getElementById('close-event-modal')?.addEventListener('click', () => {
+      modal.classList.add('hidden'); modal.classList.remove('flex');
+    });
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) { modal.classList.add('hidden'); modal.classList.remove('flex'); }
+    });
+
+    if (activeUser && ev.id && ev.id !== 'placeholder') {
+      const doRsvp = async (status) => {
+        await supabase.from('event_rsvp').upsert(
+          { event_id: ev.id, user_name: activeUser.name, status },
+          { onConflict: 'event_id,user_name' }
+        );
+        modal.classList.add('hidden'); modal.classList.remove('flex');
+        loadHomeEvents();
+      };
+      document.getElementById('modal-rsvp-yes')?.addEventListener('click', () => doRsvp('yes'));
+      document.getElementById('modal-rsvp-no')?.addEventListener('click', () => doRsvp('no'));
     }
   }
 
@@ -550,131 +806,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const eventModalContent = document.getElementById('event-modal-content');
   const eventBadges = document.querySelectorAll('.event-badge');
 
-  const eventData = {
-    'beerpong': {
-      title: "Lulla's Wintergarten Bash",
-      subtitle: "Beerpong Tournament & Birthday",
-      color: "bg-blue-600",
-      renderContent: async () => {
-        const myName = localStorage.getItem('profile-name');
-        const { data: batzen } = await supabase.from('batzen').select('*').eq('event_id', 'beerpong');
-        let myStatus = 'essen_alk';
-        let confirmed = false;
-        let listHTML = '';
-        if (batzen && batzen.length > 0) {
-          const me = batzen.find(b => b.user_name === myName);
-          if (me) { myStatus = me.consumption; confirmed = me.confirmed; }
-          batzen.forEach(b => {
-            const statusMap = { 'essen_alk': 'Essen+Alk', 'essen': 'Nur Essen', 'alk': 'Nur Alk', 'nichts': 'Selbermitgno' };
-            const confIcon = b.confirmed ? '<span class="text-green-600 font-bold text-xs">✔</span>' : '<span class="text-orange-400 font-bold text-xs">Offen</span>';
-            listHTML += `<div class="flex items-center justify-between border-b pb-1"><span>${b.user_name} (${statusMap[b.consumption]})</span>${confIcon}</div>`;
-          });
-        }
-        if (!listHTML) listHTML = '<div class="text-xs text-gray-500 text-center">Noch keine Einträge.</div>';
-        const isAdmin = activeUser && (activeUser.name === 'Lulla' || activeUser.is_admin);
-        const adminBtn = isAdmin ? `<button id="btn-admin-confirm" class="w-full mt-2 bg-black text-white text-xs py-2 rounded">Alle bestätigen (Admin)</button>` : '';
-        return `<div class="mb-4" id="batzen-container">
-          <h4 class="font-marker text-xl text-gray-800 border-b pb-1 mb-2">Batzenkonto 💰</h4>
-          <p class="text-xs text-gray-500 mb-3 font-sans">Organisatoren: Lulla & Märek | Total: ~120 CHF</p>
-          <div class="bg-yellow-100 rounded-lg p-3 mb-3 border border-yellow-300">
-            <h5 class="font-sans font-bold text-sm text-yellow-800 mb-2">Dein Status: ${myName}</h5>
-            <select id="batzen-select" class="w-full bg-white p-2 text-sm rounded border border-gray-300 mb-2 font-sans" ${confirmed ? 'disabled' : ''}>
-              <option value="essen_alk" ${myStatus === 'essen_alk' ? 'selected' : ''}>Essen + Alk</option>
-              <option value="essen" ${myStatus === 'essen' ? 'selected' : ''}>Nur Essen</option>
-              <option value="alk" ${myStatus === 'alk' ? 'selected' : ''}>Nur Alk</option>
-              <option value="nichts" ${myStatus === 'nichts' ? 'selected' : ''}>Selbermitgno</option>
-            </select>
-          </div>
-          <div class="space-y-1 font-sans text-sm">${listHTML}</div>
-          ${adminBtn}
-        </div>`;
-      },
-      attachListeners: (contentDiv) => {
-        const select = contentDiv.querySelector('#batzen-select');
-        const adminBtn = contentDiv.querySelector('#btn-admin-confirm');
-        const myName = localStorage.getItem('profile-name');
-        if (select) select.addEventListener('change', async (e) => {
-          await supabase.from('batzen').upsert({ event_id: 'beerpong', user_name: myName, consumption: e.target.value }, { onConflict: 'event_id,user_name' });
-        });
-        if (adminBtn) adminBtn.addEventListener('click', async () => {
-          await supabase.from('batzen').update({ confirmed: true }).eq('event_id', 'beerpong');
-          adminBtn.innerText = "Bestätigt! ✓";
-        });
-      }
-    },
-    'vinoclay': {
-      title: "Vino & Clay Night",
-      subtitle: "Organisatoren: Ben & Märek",
-      color: "bg-rose-700",
-      renderContent: async () => {
-        const myName = localStorage.getItem('profile-name');
-        const { data: rsvps } = await supabase.from('rsvp').select('*').eq('event_id', 'vinoclay');
-        let dabei = [], abgesagt = [], myVote = null;
-        if (rsvps) rsvps.forEach(r => {
-          if (r.user_name === myName) myVote = r.status;
-          if (r.status === 'yes') dabei.push(r.user_name);
-          if (r.status === 'no') abgesagt.push(r.user_name);
-        });
-        return `<div class="mb-5">
-          <p class="font-sans text-sm text-gray-600 mb-4">Ein chilliger Abend mit Ton und Wein.</p>
-          <h4 class="font-marker text-xl text-gray-800 mb-2">RSVP</h4>
-          <div class="grid grid-cols-2 gap-3 mb-4 font-sans">
-            <button class="rsvp-btn bg-green-500 text-white rounded-lg py-3 font-bold ${myVote === 'yes' ? 'ring-4 ring-green-300 ring-offset-2' : ''}" data-val="yes">👍 Bin Dabei</button>
-            <button class="rsvp-btn bg-red-500 text-white rounded-lg py-3 font-bold ${myVote === 'no' ? 'ring-4 ring-red-300 ring-offset-2' : ''}" data-val="no">👎 Nö</button>
-          </div>
-          <div class="bg-gray-100 rounded-lg p-3">
-            <p class="text-sm font-sans mb-1"><span class="text-green-500 font-bold">Dabei:</span> ${dabei.length > 0 ? dabei.join(', ') : 'Niemand'}</p>
-            <p class="text-sm font-sans"><span class="text-red-500 font-bold">Abgesagt:</span> ${abgesagt.length > 0 ? abgesagt.join(', ') : 'Niemand'}</p>
-          </div>
-        </div>`;
-      },
-      attachListeners: (contentDiv) => {
-        const myName = localStorage.getItem('profile-name');
-        contentDiv.querySelectorAll('.rsvp-btn').forEach(btn => {
-          btn.addEventListener('click', async (e) => {
-            const val = e.target.getAttribute('data-val');
-            contentDiv.querySelectorAll('.rsvp-btn').forEach(b => b.classList.remove('ring-4', 'ring-green-300', 'ring-red-300', 'ring-offset-2'));
-            e.target.classList.add('ring-4', 'ring-offset-2', val === 'yes' ? 'ring-green-300' : 'ring-red-300');
-            await supabase.from('rsvp').upsert({ event_id: 'vinoclay', user_name: myName, status: val }, { onConflict: 'event_id,user_name' });
-          });
-        });
-      }
-    }
-  };
+  // Event modals are now handled by openEventModal() called from loadHomeEvents()
 
-  eventBadges.forEach(badge => {
-    badge.addEventListener('click', async () => {
-      const type = badge.getAttribute('data-event');
-      const data = eventData[type];
-      if (!data) return;
-      eventModalContent.innerHTML = `<div class="p-10 text-center font-marker text-2xl text-gray-400 animate-pulse">Lade Live Daten...</div>`;
-      eventModal.classList.remove('hidden');
-      eventModal.classList.add('flex');
-      const dynamicContent = await data.renderContent();
-      eventModalContent.innerHTML = `
-        <div class="${data.color} p-6 pb-8 text-white relative">
-          <button id="close-modal" class="absolute top-4 right-4 text-white/50 hover:text-white text-3xl font-sans leading-none">&times;</button>
-          <h2 class="font-marker text-3xl leading-tight mb-1">${data.title}</h2>
-          <p class="font-sans text-sm text-white/80 uppercase tracking-wider">${data.subtitle}</p>
-        </div>
-        <div class="p-6 -mt-4 bg-[#faf8f5] rounded-t-2xl relative shadow-[0_-4px_10px_rgba(0,0,0,0.1)]" id="dynamic-content-wrapper">
-          ${dynamicContent}
-        </div>
-      `;
-      const wrapper = document.getElementById('dynamic-content-wrapper');
-      if (data.attachListeners) data.attachListeners(wrapper);
-      document.getElementById('close-modal').addEventListener('click', () => {
-        eventModal.classList.add('hidden');
-        eventModal.classList.remove('flex');
-      });
-    });
-  });
-
-  eventModal.addEventListener('click', (e) => {
-    if (e.target === eventModal) {
-      eventModal.classList.add('hidden');
-      eventModal.classList.remove('flex');
-    }
-  });
 
 });
