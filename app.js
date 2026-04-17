@@ -237,6 +237,25 @@ document.addEventListener('DOMContentLoaded', () => {
       heroDeadline.textContent = daysToDeadline > 0 ? `⏳ Noch ${daysToDeadline} Tage zum Abstimmen` : 'Abstimmung geschlossen';
     }
 
+    // Populate Home Stats
+    if (activeUser) {
+      // Money
+      const { data: batzen } = await supabase.from('batzen_v2').select('amount').eq('user_name', activeUser.name);
+      const balance = batzen?.reduce((s, e) => s + (e.amount || 0), 0) || 0;
+      const moneyEl = document.getElementById('home-stat-money');
+      if (moneyEl) moneyEl.textContent = `${balance.toFixed(0)}.-`;
+
+      // Badges (Stickers)
+      const { count: badgeCount } = await supabase.from('event_media').select('*', { count: 'exact', head: true }).eq('user_name', activeUser.name).eq('type', 'sticker');
+      const badgeEl = document.getElementById('home-stat-badges');
+      if (badgeEl) badgeEl.textContent = badgeCount || 0;
+
+      // Next Orga
+      const orgaEl = document.getElementById('home-stat-orga');
+      if (orgaEl) orgaEl.textContent = nextEvent.organizer_1 || '—';
+    }
+
+
     // Hero detail button
     const heroBtn = document.getElementById('hero-rsvp-btn');
     if (heroBtn) heroBtn.onclick = () => openEventModal(nextEvent);
@@ -379,9 +398,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (tab === 'info') await loadInfoTab(container, ev, isOrganizer);
     else if (tab === 'batzen') await loadBatzenTab(container, ev, isOrganizer);
-    else if (tab === 'turnier') await loadTurnierTab(container, ev, isOrganizer);
+    else if (tab === 'turnier' && ev.tournament_type) await loadTurnierTab(container, ev, isOrganizer);
     else if (tab === 'media') await loadMediaTab(container, ev, isOrganizer);
   }
+
 
   // --- TAB 1: INFO & RSVP ---
   async function loadInfoTab(container, ev, isOrganizer) {
@@ -473,14 +493,18 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       </div>` : ''}
 
-      <!-- Event Rating (post-event) -->
+      <!-- Event Rating (Status & Anonymous Voting) -->
       <div class="glass-card rounded-xl p-4">
-        <div class="text-xs text-white/50 font-sans mb-2 uppercase tracking-wider">Event bewerten (anonym)</div>
-        <div class="flex gap-2 justify-center" id="rating-stars">
-          ${[1,2,3,4,5].map(i => `<button class="star-btn text-3xl hover:scale-110 transition-transform" data-rating="${i}">⭐</button>`).join('')}
+        <div class="flex justify-between items-center mb-2">
+          <div class="text-xs text-white/50 font-sans uppercase tracking-wider">Event Rating (anonym)</div>
+          <div id="avg-rating-display" class="font-marker text-lg text-yellow-400"></div>
         </div>
-        <p id="rating-msg" class="text-center text-xs text-white/40 font-sans mt-2">Dein Rating bleibt anonym</p>
+        <div class="flex gap-2 justify-center" id="rating-stars">
+          ${[1,2,3,4,5].map(i => `<button class="star-btn text-3xl hover:scale-110 active:scale-95 transition-transform" data-rating="${i}">⭐</button>`).join('')}
+        </div>
+        <p id="rating-msg" class="text-center text-[10px] text-white/30 font-sans mt-2 italic">Andere haben dieses Event mit <span id="avg-rating-val">...</span> bewertet.</p>
       </div>
+
     `;
 
     // RSVP button logic
@@ -511,12 +535,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Star rating (anonymous)
     if (ev.id && ev.id !== 'placeholder') {
+      // Fetch average
+      const { data: ratings } = await supabase.from('event_ratings').select('rating').eq('event_id', ev.id);
+      if (ratings && ratings.length > 0) {
+        const avg = ratings.reduce((s, r) => s + r.rating, 0) / ratings.length;
+        const avgEl = document.getElementById('avg-rating-val');
+        const avgDisp = document.getElementById('avg-rating-display');
+        if (avgEl) avgEl.textContent = `${avg.toFixed(1)} Sterne`;
+        if (avgDisp) avgDisp.textContent = '⭐'.repeat(Math.round(avg));
+      }
+
       document.querySelectorAll('.star-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
           const rating = parseInt(btn.getAttribute('data-rating'));
           await supabase.from('event_ratings').insert({ event_id: ev.id, rating });
           const msg = document.getElementById('rating-msg');
-          if (msg) msg.textContent = `Danke! Du hast ${rating}⭐ gegeben.`;
+          if (msg) msg.textContent = `✓ Danke! Dein ${rating}⭐-Rating wurde anonym gespeichert.`;
           document.querySelectorAll('.star-btn').forEach((b, idx) => {
             b.textContent = idx < rating ? '⭐' : '☆';
           });
@@ -524,6 +558,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
   }
+
 
   // --- TAB 2: BATZENKONTO ---
   async function loadBatzenTab(container, ev, isOrganizer) {
@@ -1082,11 +1117,13 @@ document.addEventListener('DOMContentLoaded', () => {
   async function loadHallOfFame() {
     const hofContainer = document.getElementById('hall-of-fame');
     if (!hofContainer) return;
-    const { data: highlights } = await supabase.from('event_media').select('*').limit(3).order('created_at', { ascending: false });
-    if (!highlights || highlights.length === 0) return;
-    
-    // Simple curation UI
+    // Populate categories
+    document.getElementById('hof-sticker').innerHTML = highlights.filter(m => m.type === 'sticker')[0] ? `<img src="${highlights.filter(m => m.type === 'sticker')[0].content_url}" class="w-full h-full object-cover">` : '<div class="w-full h-full flex items-center justify-center text-[8px] text-white/20">TBD</div>';
+    document.getElementById('hof-quote').textContent = highlights.filter(m => m.type === 'quote')[0]?.text_content || '"Noch keine Quotes"';
+    document.getElementById('hof-schnapps').textContent = "Bierpong im TL 2026"; // Hardcoded example for schnappsidee as per vibe
+
     hofContainer.innerHTML = highlights.map(m => `
+
       <div class="glass-card rounded-xl overflow-hidden mb-2 relative">
         <img src="${m.content_url}" class="w-full h-40 object-cover opacity-80">
         <div class="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black to-transparent">
