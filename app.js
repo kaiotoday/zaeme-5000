@@ -25,22 +25,59 @@ document.addEventListener('DOMContentLoaded', () => {
   let loginSecret = { 1: null, 2: null, 3: null };
 
   // --- Functions (Hoisted) ---
+
+  async function setupAdminPanel(usr) {
+     const adminPanel = document.getElementById('admin-panel');
+     const pendingList = document.getElementById('admin-pending-list');
+     if(!adminPanel || !pendingList) return;
+     if(!usr || !usr.is_admin) {
+        adminPanel.classList.add('hidden');
+        return;
+     }
+     adminPanel.classList.remove('hidden');
+     
+     const { data: pends } = await supabase.from('users').select('*').eq('is_approved', false);
+     if(!pends || pends.length === 0) {
+        pendingList.innerHTML = '<div class="text-white/40 text-center text-xs font-sans mt-2">Keine offenen Anträge.</div>';
+        return;
+     }
+
+     pendingList.innerHTML = '';
+     pends.forEach(p => {
+        pendingList.innerHTML += `
+          <div class="flex items-center justify-between bg-white/5 p-3 rounded-xl border border-white/10 mb-2">
+            <span class="text-white font-bold font-sans">${p.name}</span>
+            <button class="bg-green-600 hover:bg-green-500 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg uppercase tracking-wider approve-btn" data-id="${p.id}">Zulassen</button>
+          </div>
+        `;
+     });
+
+     document.querySelectorAll('.approve-btn').forEach(b => {
+        b.addEventListener('click', async (e) => {
+           const id = e.target.getAttribute('data-id');
+           e.target.textContent = '...';
+           await supabase.from('users').update({ is_approved: true }).eq('id', id);
+           setupAdminPanel(usr); // Reload
+        });
+     });
+  }
+
   async function loadLoginNames() {
     if(!loginNameGrid) return;
-    console.log("Versuche Accounts zu laden...");
+    console.log("Lade Accounts aus Supabase...");
     const { data: users, error } = await supabase.from('users').select('name').eq('is_approved', true);
     
     if(error) {
-       console.error("Supabase Fehler beim Laden der Accounts:", error);
-       loginNameGrid.innerHTML = `<div class="col-span-2 text-center text-red-400 text-xs py-4">
-         Fehler beim Laden!<br>Hast du das SQL-Script in Supabase schon ausgeführt?<br>
-         <span class="opacity-50">(${error.message})</span>
+       console.error("Supabase Error:", error);
+       loginNameGrid.innerHTML = `<div class="col-span-2 text-center text-red-400 text-xs py-4 font-sans border-2 border-red-500/20 rounded-xl">
+         Datenbank-Fehler!<br>
+         <span class="opacity-50 text-[10px]">${error.message}</span>
        </div>`;
        return;
     }
 
     if(!users || users.length === 0) {
-       loginNameGrid.innerHTML = '<div class="col-span-2 text-center text-white/50 text-xs py-4">Noch keine freigeschalteten Accounts.<br>Registriere dich zuerst!</div>';
+       loginNameGrid.innerHTML = '<div class="col-span-2 text-center text-white/50 text-xs py-6 font-sans italic">Noch keine User.<br>Registriere dich zuerst!</div>';
        return;
     }
     
@@ -52,10 +89,12 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.login-name-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         selectedLoginName = e.target.textContent.trim();
-        pinWelcomeMsg.textContent = `Hallo ${selectedLoginName}`;
-        pinModal.classList.remove('hidden');
-        resetSecret(secretBtns, loginSecret);
-        setTimeout(() => pinModal.classList.remove('opacity-0'), 50);
+        if(pinWelcomeMsg) pinWelcomeMsg.textContent = `Hallo ${selectedLoginName}`;
+        if(pinModal) {
+          pinModal.classList.remove('hidden');
+          resetSecret(secretBtns, loginSecret);
+          setTimeout(() => pinModal.classList.remove('opacity-0'), 50);
+        }
       });
     });
   }
@@ -74,7 +113,8 @@ document.addEventListener('DOMContentLoaded', () => {
          setupAdminPanel(activeUser);
          const profileAvatar = document.getElementById('profile-avatar');
          if (userRow.avatar_url && profileAvatar) profileAvatar.style.backgroundImage = `url('${userRow.avatar_url}')`;
-         if (userRow.ping_lang && document.getElementById('profile-lang')) document.getElementById('profile-lang').value = userRow.ping_lang;
+         const profileLangSelect = document.getElementById('profile-lang');
+         if (userRow.ping_lang && profileLangSelect) profileLangSelect.value = userRow.ping_lang;
       }
     } else {
       if (viewLogin) viewLogin.classList.remove('hidden');
@@ -86,7 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- Logic Execution ---
 
-  // Initial Boot
+  // --- Logic Execution Start ---
   checkAuth();
 
   // Tabs Login/Signup
@@ -222,42 +262,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // --- Admin Panel Logic ---
-  const setupAdminPanel = async (usr) => {
-     const adminPanel = document.getElementById('admin-panel');
-     const pendingList = document.getElementById('admin-pending-list');
-     if(!adminPanel || !pendingList) return;
-     if(!usr.is_admin) {
-        adminPanel.classList.add('hidden');
-        return;
-     }
-     adminPanel.classList.remove('hidden');
-     
-     const { data: pends } = await supabase.from('users').select('*').eq('is_approved', false);
-     if(!pends || pends.length === 0) {
-        pendingList.innerHTML = '<div class="text-white/40 text-center text-xs">Keine offenen Anträge.</div>';
-        return;
-     }
-
-     pendingList.innerHTML = '';
-     pends.forEach(p => {
-        pendingList.innerHTML += `
-          <div class="flex items-center justify-between bg-red-900/50 p-2 rounded border border-red-500/30">
-            <span class="text-white font-bold">${p.name}</span>
-            <button class="bg-green-600 hover:bg-green-500 text-white text-[10px] font-bold px-3 py-1 rounded uppercase tracking-wider approve-btn shadow" data-id="${p.id}">Bestätigen</button>
-          </div>
-        `;
-     });
-
-     document.querySelectorAll('.approve-btn').forEach(b => {
-        b.addEventListener('click', async (e) => {
-           const id = e.target.getAttribute('data-id');
-           e.target.textContent = '...';
-           await supabase.from('users').update({ is_approved: true }).eq('id', id);
-           setupAdminPanel(usr); // Reload
-        });
-     });
-  };
 
   // --- Profile Logic Streams ---
   const profileAvatar = document.getElementById('profile-avatar');
